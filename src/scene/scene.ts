@@ -4,7 +4,7 @@ import type { WeatherMood } from "../engine/weather/types";
 import type { SceneState } from "../engine/scene-state/sceneState";
 import { applyProceduralEnvironment } from "./environment";
 import { createSunLightRig } from "./lighting/sunLight";
-import { createGround } from "./objects/ground";
+import { createRoom } from "./objects/room";
 import { getSceneObject } from "./objects/registry";
 import { VASE_OBJECT_ID } from "./objects/vaseFactory"; // also registers it as a side effect
 import type { RenderContext } from "./renderer";
@@ -15,9 +15,10 @@ export interface SceneRig {
   applySceneState(state: SceneState): void;
 }
 
-// Matches renderer.ts's initial FogExp2 density — the "clear sky" baseline
-// that mood.fogDensityMultiplier scales from.
-const BASE_FOG_DENSITY = 0.5;
+// The "clear sky" baseline that mood.fogDensityMultiplier scales from.
+// Lower than the old open-void value: the back wall sits ~2m from the
+// camera, and denser fog washed it toward the sky tint like a haze indoors.
+const BASE_FOG_DENSITY = 0.3;
 
 // Exponential-smoothing time constant for lighting changes. The first real
 // weather fetch lands a few hundred ms after the clear-sky first paint, and
@@ -63,7 +64,7 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
   const sunRig = createSunLightRig();
   ctx.scene.add(sunRig.light, sunRig.light.target);
 
-  ctx.scene.add(createGround());
+  ctx.scene.add(createRoom());
 
   const factory = getSceneObject(VASE_OBJECT_ID);
   if (factory) {

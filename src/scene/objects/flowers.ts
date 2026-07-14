@@ -10,7 +10,7 @@ import { phyllotaxis } from "../../engine/geometry/phyllotaxis";
 const UP = new THREE.Vector3(0, 1, 0);
 
 /** Indexed BufferGeometry from a petal grid, with a base→tip vertex-color gradient. */
-function gridToGeometry(grid: PetalGrid, baseHex: number, tipHex: number): THREE.BufferGeometry {
+export function gridToGeometry(grid: PetalGrid, baseHex: number, tipHex: number): THREE.BufferGeometry {
   const base = new THREE.Color(baseHex);
   const tip = new THREE.Color(tipHex);
   const scratch = new THREE.Color();
@@ -109,7 +109,7 @@ function createSharedAssets(): SharedAssets {
 }
 
 /** Instanced ring of petal-grid surfaces radiating from the head axis (+Y up = face). */
-function addRadialRing(
+export function addRadialRing(
   head: THREE.Group,
   geometry: THREE.BufferGeometry,
   material: THREE.Material,
@@ -254,13 +254,44 @@ function createLeaf(
   return mesh;
 }
 
+interface SwayEntry {
+  node: THREE.Group;
+  phase: number;
+  freqHz: number;
+  amplitudeRad: number;
+}
+
+/**
+ * Attach a breeze sway to per-stem groups: each stem tilts a fraction of a
+ * degree around its base on its own slow phase. The caller drives it via
+ * `group.userData.update(tSec)` from the frame loop — which never runs
+ * under reduced motion, so the bouquet simply holds still there.
+ */
+export function attachBreeze(group: THREE.Group, stems: readonly THREE.Group[]): void {
+  const entries: SwayEntry[] = stems.map((node, i) => ({
+    node,
+    phase: i * 2.1,
+    freqHz: 0.22 + (i % 3) * 0.07,
+    amplitudeRad: 0.012 + (i % 2) * 0.004,
+  }));
+  group.userData.update = (tSec: number): void => {
+    for (const s of entries) {
+      const w = tSec * s.freqHz * Math.PI * 2 + s.phase;
+      s.node.rotation.z = Math.sin(w) * s.amplitudeRad;
+      s.node.rotation.x = Math.sin(w * 0.63 + 1.4) * s.amplitudeRad * 0.7;
+    }
+  };
+}
+
 /** Procedural sunflower bouquet: thick stems, drooping leaves, phyllotaxis seed heads. */
 export function createFlowersGroup(opts?: Partial<BouquetOptions>): THREE.Group {
   const stems = layoutBouquet(opts);
   const assets = createSharedAssets();
   const group = new THREE.Group();
+  const stemGroups: THREE.Group[] = [];
 
   for (const stem of stems) {
+    const stemGroup = new THREE.Group();
     const curve = new THREE.CatmullRomCurve3(
       stem.controlPoints.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
     );
@@ -269,14 +300,17 @@ export function createFlowersGroup(opts?: Partial<BouquetOptions>): THREE.Group 
       assets.stemMaterial,
     );
     stemMesh.castShadow = true;
-    group.add(stemMesh);
+    stemGroup.add(stemMesh);
 
     for (const leaf of stem.leaves) {
-      group.add(createLeaf(leaf, curve, assets));
+      stemGroup.add(createLeaf(leaf, curve, assets));
     }
 
-    group.add(createHead(stem, assets));
+    stemGroup.add(createHead(stem, assets));
+    group.add(stemGroup);
+    stemGroups.push(stemGroup);
   }
 
+  attachBreeze(group, stemGroups);
   return group;
 }

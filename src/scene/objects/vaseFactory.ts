@@ -12,12 +12,12 @@ registerSceneObject({
   create(): THREE.Group {
     const group = new THREE.Group();
     group.add(createVaseGroup());
-    group.add(
-      createFlowersGroup({
-        vaseRimYM: DEFAULT_VASE_PROFILE.heightM,
-        vaseNeckRadiusM: DEFAULT_VASE_PROFILE.neckRadiusM,
-      }),
-    );
+    const flowers = createFlowersGroup({
+      vaseRimYM: DEFAULT_VASE_PROFILE.heightM,
+      vaseNeckRadiusM: DEFAULT_VASE_PROFILE.neckRadiusM,
+    });
+    group.add(flowers);
+    group.userData.update = flowers.userData.update; // breeze hook for the scene rig
     return group;
   },
 });

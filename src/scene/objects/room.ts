@@ -32,14 +32,21 @@ function createWall(): THREE.Mesh {
   return wall;
 }
 
+export interface Room {
+  group: THREE.Group;
+  /** Exposed so the scene rig can whiten the floor while it snows. */
+  floorMaterial: THREE.MeshStandardMaterial;
+}
+
+export const SNOW_FLOOR_COLOR = 0x99a3b3;
+export const BASE_FLOOR_COLOR = FLOOR_COLOR;
+
 /** Floor + two-wall corner, all shadow receivers. */
-export function createRoom(): THREE.Group {
+export function createRoom(): Room {
   const group = new THREE.Group();
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(EXTENT_M, EXTENT_M),
-    new THREE.MeshStandardMaterial({ color: FLOOR_COLOR, roughness: 0.85 }),
-  );
+  const floorMaterial = new THREE.MeshStandardMaterial({ color: FLOOR_COLOR, roughness: 0.85 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(EXTENT_M, EXTENT_M), floorMaterial);
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.0005; // hair below y=0 so the vase base never z-fights
   floor.receiveShadow = true;
@@ -54,5 +61,5 @@ export function createRoom(): THREE.Group {
   sideWall.position.set(SIDE_WALL_X, EXTENT_M / 4, 0);
   group.add(sideWall);
 
-  return group;
+  return { group, floorMaterial };
 }

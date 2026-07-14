@@ -69,6 +69,14 @@ describe("conditionToMood", () => {
     expect(storm.sunIntensityMultiplier).toBeLessThan(clear.sunIntensityMultiplier);
   });
 
+  it("only storm gets lightning", () => {
+    const conditions = ["clear", "cloudy", "fog", "rain", "snow", "storm"] as const;
+    for (const c of conditions) {
+      expect(conditionToMood(snapshot({ condition: c })).lightning).toBe(c === "storm");
+    }
+    expect(neutralMood().lightning).toBe(false);
+  });
+
   it("gives every condition a sky tint, brightest for clear and darkest for storm", () => {
     const conditions = ["clear", "cloudy", "fog", "rain", "snow", "storm"] as const;
     const tints = conditions.map((c) => conditionToMood(snapshot({ condition: c })).skyTintHex);

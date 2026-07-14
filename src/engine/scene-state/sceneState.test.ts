@@ -80,6 +80,25 @@ describe("deriveSceneState", () => {
     expect(storm.backdropHex).toBeLessThan(clear.backdropHex);
   });
 
+  it("moon defaults to absent (zero intensity) when not provided", () => {
+    const state = deriveSceneState(SUN, snapshot({ condition: "clear" }));
+    expect(state.moon.intensity).toBe(0);
+  });
+
+  it("moonlight shows at night and is muted by clouds like the sun", () => {
+    const night = { azimuth: 0, apparentAltitude: -30 };
+    const moon = { position: { azimuth: 180, apparentAltitude: 60 }, illumination: 1 };
+    const clear = deriveSceneState(night, snapshot({ condition: "clear" }), moon);
+    const storm = deriveSceneState(night, snapshot({ condition: "storm" }), moon);
+    expect(clear.moon.intensity).toBeGreaterThan(0);
+    expect(storm.moon.intensity).toBeCloseTo(clear.moon.intensity * 0.3, 9);
+  });
+
+  it("exposes the snapshot temperature, or null before weather arrives", () => {
+    expect(deriveSceneState(SUN, snapshot({ temperatureC: -4 })).temperatureC).toBe(-4);
+    expect(deriveSceneState(SUN, null).temperatureC).toBeNull();
+  });
+
   it("returns the exact mood conditionToMood would produce for that snapshot", () => {
     const weather = snapshot({ condition: "rain", precipitationMm: 3 });
     const state = deriveSceneState(SUN, weather);

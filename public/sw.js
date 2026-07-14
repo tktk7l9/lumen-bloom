@@ -2,8 +2,15 @@
 // up online) with a cached shell fallback; other same-origin GETs are
 // cache-first with runtime caching (build assets are content-hashed).
 
-const CACHE = "lumen-bloom-v1";
-const SHELL = ["/", "/index.html", "/favicon.svg", "/manifest.webmanifest"];
+const CACHE = "lumen-bloom-v2";
+const SHELL = [
+  "/",
+  "/index.html",
+  "/favicon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/manifest.webmanifest",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

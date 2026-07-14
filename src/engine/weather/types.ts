@@ -25,4 +25,6 @@ export interface WeatherMood {
   particle: "none" | "rain" | "snow";
   /** 0..1, derived from precipitation. */
   particleIntensity: number;
+  /** Occasional lightning flashes (storm only). */
+  lightning: boolean;
 }

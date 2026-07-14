@@ -55,6 +55,7 @@ function createGlassMesh(outer: readonly ProfilePoint[], inner: readonly Profile
   });
 
   const mesh = new THREE.Mesh(new THREE.LatheGeometry(profile, 72), material);
+  mesh.name = "vase-glass"; // findable by the scene rig for frost styling
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   return mesh;

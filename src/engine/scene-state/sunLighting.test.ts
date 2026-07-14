@@ -7,15 +7,22 @@ describe("deriveSunLighting", () => {
     expect(state.intensity).toBe(0);
     expect(state.ambientLevel).toBeCloseTo(0.12, 5);
     expect(state.environmentLevel).toBeCloseTo(0.06, 5);
+    expect(state.dayFactor).toBe(0);
     expect(state.colorTempK).toBeCloseTo(1900, 5);
   });
 
   it("reaches the daytime plateau at a high midday altitude", () => {
     const state = deriveSunLighting({ azimuth: 180, apparentAltitude: 60 });
-    expect(state.intensity).toBeCloseTo(3.2, 5);
+    expect(state.intensity).toBeCloseTo(2.6, 5);
     expect(state.ambientLevel).toBeCloseTo(0.38, 5);
-    expect(state.environmentLevel).toBeCloseTo(1.0, 5);
+    expect(state.environmentLevel).toBeCloseTo(0.55, 5);
+    expect(state.dayFactor).toBe(1);
     expect(state.colorTempK).toBeCloseTo(5800, 5);
+  });
+
+  it("gives twilight a partial dayFactor for a dawn-tinted backdrop", () => {
+    const state = deriveSunLighting({ azimuth: 90, apparentAltitude: 0 });
+    expect(state.dayFactor).toBeCloseTo(0.3, 5);
   });
 
   it("never lets direct light through below the horizon", () => {
@@ -43,6 +50,7 @@ describe("deriveSunLighting", () => {
       expect(states[i].intensity).toBeGreaterThanOrEqual(states[i - 1].intensity);
       expect(states[i].ambientLevel).toBeGreaterThanOrEqual(states[i - 1].ambientLevel);
       expect(states[i].environmentLevel).toBeGreaterThanOrEqual(states[i - 1].environmentLevel);
+      expect(states[i].dayFactor).toBeGreaterThanOrEqual(states[i - 1].dayFactor);
       expect(states[i].colorTempK).toBeGreaterThanOrEqual(states[i - 1].colorTempK);
     }
   });

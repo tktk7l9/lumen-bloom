@@ -32,7 +32,11 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
   ctx.scene.add(createGround());
 
   const factory = getSceneObject(VASE_OBJECT_ID);
-  if (factory) ctx.scene.add(factory.create());
+  if (factory) {
+    const centerpiece = factory.create();
+    centerpiece.scale.setScalar(0.8); // one size smaller in frame; still standing on y=0
+    ctx.scene.add(centerpiece);
+  }
 
   const weatherEffects = createWeatherEffects(reducedMotion);
   ctx.scene.add(weatherEffects.group);

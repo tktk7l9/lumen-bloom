@@ -51,6 +51,27 @@ body {
   font: 0.8rem/1.4 system-ui, sans-serif;
 }
 
+/* The explicit display:flex above defeats the UA's [hidden] { display:none },
+   so hide() silently did nothing without this — the prompt stayed on screen
+   even after a successful GPS fix. */
+.location-prompt[hidden] {
+  display: none;
+}
+
+.location-prompt .close {
+  padding: 0.35rem 0.55rem;
+  border: none;
+  background: transparent;
+  color: #8a93aa;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.location-prompt .close:hover {
+  color: #cbd3e6;
+}
+
 .location-prompt button {
   flex: none;
   padding: 0.35rem 0.8rem;

@@ -4,6 +4,8 @@
 
 import { el } from "./dom";
 
+const DISMISS_KEY = "lumen-bloom:location-prompt-dismissed";
+
 export interface PermissionPrompt {
   showDenied(onRetry: () => void): void;
   hide(): void;
@@ -16,13 +18,25 @@ export function createPermissionPrompt(mount: HTMLElement): PermissionPrompt {
     el("span", {}, "位置情報を許可すると、太陽の位置がこの場所に合わせて正確になります。"),
   );
   const retryButton = el("button", { type: "button" }, "再試行");
-  node.append(retryButton);
+  const closeButton = el(
+    "button",
+    { type: "button", class: "close", "aria-label": "閉じる" },
+    "×",
+  );
+  // Denied-permission users shouldn't be nagged on every launch of an
+  // always-on wallpaper — × hides the prompt for good (per browser).
+  closeButton.addEventListener("click", () => {
+    node.hidden = true;
+    localStorage.setItem(DISMISS_KEY, "1");
+  });
+  node.append(retryButton, closeButton);
   mount.append(node);
 
   let currentHandler: (() => void) | null = null;
 
   return {
     showDenied(onRetry: () => void): void {
+      if (localStorage.getItem(DISMISS_KEY) !== null) return;
       if (currentHandler) retryButton.removeEventListener("click", currentHandler);
       currentHandler = onRetry;
       retryButton.addEventListener("click", currentHandler);

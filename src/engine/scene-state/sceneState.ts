@@ -41,6 +41,9 @@ export function deriveSceneState(
       environmentLevel,
     },
     mood,
-    backdropHex: lerpHex(NIGHT_BACKDROP, mood.skyTintHex, environmentLevel),
+    // dayFactor, not environmentLevel: the sky tint already encodes the
+    // weather (storm's tint is dark), so dimming the mix by cloud cover too
+    // would darken overcast skies twice.
+    backdropHex: lerpHex(NIGHT_BACKDROP, mood.skyTintHex, baseSun.dayFactor),
   };
 }

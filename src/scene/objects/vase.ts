@@ -44,7 +44,7 @@ function createGlassMesh(outer: readonly ProfilePoint[], inner: readonly Profile
     transmission: 1.0,
     thickness: 0.008,
     ior: 1.5,
-    envMapIntensity: 1.1,
+    envMapIntensity: 0.8,
     clearcoat: 0.5,
     clearcoatRoughness: 0.2,
     // Without this the glass writes depth and the alpha-blended water inside

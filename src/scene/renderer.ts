@@ -31,7 +31,7 @@ export function createRenderContext(canvas: HTMLCanvasElement): RenderContext {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(BACKDROP, 1);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
+  renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -45,9 +45,10 @@ export function createRenderContext(canvas: HTMLCanvasElement): RenderContext {
     0.05,
     20,
   );
-  // Framed for the sunflower arrangement: vase 0.32m + stems/heads up to ~0.6m.
-  camera.position.set(0, 0.4, 1.45);
-  camera.lookAt(0, 0.3, 0);
+  // Framed for the sunflower arrangement (scaled 0.8× in scene.ts, so the
+  // whole cluster tops out around ~0.5m and reads a size smaller in frame).
+  camera.position.set(0, 0.34, 1.45);
+  camera.lookAt(0, 0.24, 0);
 
   function resize(): void {
     const w = window.innerWidth;

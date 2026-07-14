@@ -69,7 +69,7 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
   const factory = getSceneObject(VASE_OBJECT_ID);
   if (factory) {
     const centerpiece = factory.create();
-    centerpiece.scale.setScalar(0.8); // one size smaller in frame; still standing on y=0
+    centerpiece.scale.setScalar(0.64); // two sizes smaller in frame; still standing on y=0
     ctx.scene.add(centerpiece);
   }
 

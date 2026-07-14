@@ -10,7 +10,13 @@ export type FloraKind =
   | "tulip"
   | "cosmos"
   | "peony"
+  | "dahlia"
+  | "mum"
+  | "carnation"
   | "hydrangea"
+  | "narcissus"
+  | "lily"
+  | "lavender"
   | "blossomBranch"
   | "leafBranch"
   | "berryBranch";
@@ -178,23 +184,153 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
       style: { kind: "ceramic", colorHex: 0xe8e2d6 },
     },
   },
+  {
+    id: "suisen",
+    name: "水仙",
+    description:
+      "雪の残る頃から咲き始める冬の花。うつむき加減に咲く白い花弁の中心に、ラッパ状の黄色い副花冠を持つ。花言葉は「自己愛」「うぬぼれ」——水鏡に見とれたナルキッソスの伝説から。",
+    flora: {
+      kind: "narcissus",
+      paletteHex: [0xf4f2ea, 0xe8b93a],
+      stemCount: 5,
+      seed: 10,
+    },
+    vase: {
+      profile: { heightM: 0.28, neckRadiusM: 0.04, bellyRadiusM: 0.052, baseRadiusM: 0.05 },
+      style: { kind: "ceramic", colorHex: 0xdde6ec },
+    },
+  },
+  {
+    id: "mimosa",
+    name: "ミモザ",
+    description:
+      "早春を告げる黄色いポンポンの枝物。3月8日の国際女性デーには感謝を込めて贈られる「ミモザの日」の花。銀葉との対比も美しい。花言葉は「感謝」「友情」。",
+    flora: {
+      kind: "berryBranch",
+      paletteHex: [0xf2c73a, 0x8a9a7b],
+      branchHex: 0x5a4c3a,
+      stemCount: 3,
+      seed: 14,
+    },
+    vase: {
+      profile: { heightM: 0.34, neckRadiusM: 0.048, bellyRadiusM: 0.058, baseRadiusM: 0.058 },
+      style: { kind: "ceramic", colorHex: 0xb0603f },
+    },
+  },
+  {
+    id: "carnation",
+    name: "カーネーション",
+    description:
+      "フリルのように波打つ花弁を幾重にも重ねる、母の日の定番。切り花としての歴史は古く、日持ちの良さでも愛される。花言葉は「無垢で深い愛」。",
+    flora: {
+      kind: "carnation",
+      paletteHex: [0xe87a9c, 0xc23b52],
+      stemCount: 4,
+      seed: 13,
+    },
+    vase: {
+      profile: { heightM: 0.27, neckRadiusM: 0.05, bellyRadiusM: 0.075, baseRadiusM: 0.055 },
+      style: { kind: "glass", colorHex: 0xe9c9d2 },
+    },
+  },
+  {
+    id: "lavender",
+    name: "ラベンダー",
+    description:
+      "初夏の風に香る紫の穂。古代ローマでは入浴に使われ、名はラテン語の「洗う(lavare)」に由来するとも。乾いても香りが残る。花言葉は「沈黙」「あなたを待っています」。",
+    flora: {
+      kind: "lavender",
+      paletteHex: [0x8a76c9, 0x6f5cb0],
+      stemCount: 9,
+      seed: 15,
+    },
+    vase: {
+      profile: { heightM: 0.29, neckRadiusM: 0.036, bellyRadiusM: 0.046, baseRadiusM: 0.046 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "lily",
+    name: "ユリ",
+    description:
+      "大輪の花弁を優雅に反らせて咲く夏の花。強い芳香を放ち、一輪でも空間の主役になる。白いカサブランカは「ユリの女王」と呼ばれる。花言葉は「純粋」「威厳」。",
+    flora: {
+      kind: "lily",
+      paletteHex: [0xf6f3ec, 0xf2dfe8],
+      stemCount: 3,
+      seed: 16,
+    },
+    vase: {
+      profile: { heightM: 0.37, neckRadiusM: 0.055, bellyRadiusM: 0.068, baseRadiusM: 0.06 },
+      style: { kind: "glass", colorHex: 0xeef7f6 },
+    },
+  },
+  {
+    id: "doudan",
+    name: "ドウダンツツジ",
+    description:
+      "夏の生け込みの定番となった枝物。涼やかな小さい緑の葉が風にそよぎ、水さえ替えれば一ヶ月近くもつ丈夫さで人気。秋には紅葉も楽しめる。花言葉は「上品」「節制」。",
+    flora: {
+      kind: "leafBranch",
+      paletteHex: [0x4c7a34, 0x69984a, 0x3c6428],
+      branchHex: 0x4a3c30,
+      stemCount: 3,
+      seed: 17,
+    },
+    vase: {
+      profile: { heightM: 0.36, neckRadiusM: 0.06, bellyRadiusM: 0.07, baseRadiusM: 0.062 },
+      style: { kind: "glass", colorHex: 0xf0f7f5 },
+    },
+  },
+  {
+    id: "dahlia",
+    name: "ダリア",
+    description:
+      "幾何学的に重なる花弁が圧巻の秋の大輪。18世紀にメキシコからヨーロッパへ渡り、品種は今や数万種とも。和名は「天竺牡丹」。花言葉は「華麗」「気品」。",
+    flora: {
+      kind: "dahlia",
+      paletteHex: [0xc23b4e, 0xd96f2e],
+      stemCount: 3,
+      seed: 18,
+    },
+    vase: {
+      profile: { heightM: 0.28, neckRadiusM: 0.05, bellyRadiusM: 0.08, baseRadiusM: 0.058 },
+      style: { kind: "ceramic", colorHex: 0x24262c },
+    },
+  },
+  {
+    id: "mum",
+    name: "マム",
+    description:
+      "皇室の紋にも使われる菊を、洋風にアレンジしたのが「マム」。細い花弁がびっしりと重なる姿は晩秋の贅沢。重陽の節句(9月9日)は菊の節句。花言葉は「高貴」。",
+    flora: {
+      kind: "mum",
+      paletteHex: [0xe8c23a, 0xf2efe6],
+      stemCount: 4,
+      seed: 19,
+    },
+    vase: {
+      profile: { heightM: 0.3, neckRadiusM: 0.048, bellyRadiusM: 0.065, baseRadiusM: 0.056 },
+      style: { kind: "ceramic", colorHex: 0xafc9ba },
+    },
+  },
 ];
 
-// Two ids per month (0 = January); the pick alternates week by week so
-// consecutive weeks always differ.
-const MONTH_ROTATION: ReadonlyArray<readonly [string, string]> = [
-  ["ume", "nanten"], // 1月
-  ["ume", "tulip"], // 2月
-  ["sakura", "tulip"], // 3月
-  ["tulip", "sakura"], // 4月
-  ["peony", "hydrangea"], // 5月
-  ["hydrangea", "peony"], // 6月
-  ["sunflower", "hydrangea"], // 7月
-  ["sunflower", "cosmos"], // 8月
-  ["cosmos", "sunflower"], // 9月
-  ["cosmos", "momiji"], // 10月
-  ["momiji", "nanten"], // 11月
-  ["nanten", "momiji"], // 12月
+// Seasonal candidates per month (0 = January); the pick cycles week by
+// week so consecutive weeks always differ.
+const MONTH_ROTATION: ReadonlyArray<readonly string[]> = [
+  ["ume", "suisen", "nanten"], // 1月
+  ["ume", "tulip", "suisen"], // 2月
+  ["sakura", "mimosa", "tulip"], // 3月
+  ["tulip", "sakura", "peony"], // 4月
+  ["peony", "carnation", "hydrangea"], // 5月
+  ["hydrangea", "lavender", "doudan"], // 6月
+  ["sunflower", "lily", "doudan"], // 7月
+  ["sunflower", "lily", "cosmos"], // 8月
+  ["cosmos", "mum", "sunflower"], // 9月
+  ["cosmos", "dahlia", "momiji"], // 10月
+  ["momiji", "mum", "dahlia"], // 11月
+  ["nanten", "momiji", "suisen"], // 12月
 ];
 
 // Old registry ids kept working for shared links.
@@ -217,9 +353,9 @@ const WEEK_MS = 7 * 86_400_000;
 export function arrangementForDate(date: Date, latitude = 35): Arrangement {
   const shift = latitude < 0 ? 6 : 0;
   const month = (date.getMonth() + shift) % 12;
-  const pair = MONTH_ROTATION[month];
+  const candidates = MONTH_ROTATION[month];
   const week = Math.floor(date.getTime() / WEEK_MS);
-  const id = pair[((week % pair.length) + pair.length) % pair.length];
+  const id = candidates[((week % candidates.length) + candidates.length) % candidates.length];
   // Every MONTH_ROTATION id is verified against the catalog by tests.
   return findArrangement(id) as Arrangement;
 }

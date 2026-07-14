@@ -61,21 +61,17 @@ describe("arrangementForDate", () => {
     expect(w1.id).not.toBe(w2.id);
   });
 
-  it("picks summer flowers in July for the northern hemisphere", () => {
-    const ids = [
-      arrangementForDate(new Date(2026, 6, 8), 35).id,
-      arrangementForDate(new Date(2026, 6, 15), 35).id,
-    ];
-    expect(ids.sort()).toEqual(["hydrangea", "sunflower"]);
+  it("cycles through July's three summer candidates over three weeks (north)", () => {
+    const ids = [8, 15, 22].map((day) => arrangementForDate(new Date(2026, 6, day), 35).id);
+    expect(new Set(ids).size).toBe(3);
+    for (const id of ids) expect(["sunflower", "lily", "doudan"]).toContain(id);
   });
 
   it("shifts the season six months for the southern hemisphere", () => {
-    const ids = [
-      arrangementForDate(new Date(2026, 6, 8), -33.9).id,
-      arrangementForDate(new Date(2026, 6, 15), -33.9).id,
-    ];
-    // July in Sydney = January's pair.
-    expect(ids.sort()).toEqual(["nanten", "ume"]);
+    const ids = [8, 15, 22].map((day) => arrangementForDate(new Date(2026, 6, day), -33.9).id);
+    // July in Sydney = January's winter candidates.
+    for (const id of ids) expect(["ume", "suisen", "nanten"]).toContain(id);
+    expect(new Set(ids).size).toBe(3);
   });
 
   it("defaults to the northern hemisphere when latitude is omitted", () => {

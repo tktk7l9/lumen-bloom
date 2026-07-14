@@ -5,7 +5,15 @@ import { createFlowersGroup } from "./flowers";
 import { createBranchesGroup } from "./flora/branches";
 import { createCosmosGroup } from "./flora/cosmos";
 import { createHydrangeaGroup } from "./flora/hydrangea";
-import { createPeonyGroup } from "./flora/peony";
+import { createLavenderGroup } from "./flora/lavender";
+import { createLilyGroup } from "./flora/lily";
+import {
+  createCarnationGroup,
+  createDahliaGroup,
+  createMumGroup,
+  createPeonyGroup,
+} from "./flora/layeredBloom";
+import { createNarcissusGroup } from "./flora/narcissus";
 import { createTulipsGroup } from "./flora/tulips";
 import { createVaseGroup } from "./vase";
 
@@ -35,8 +43,26 @@ export function createArrangement(a: Arrangement): THREE.Group {
     case "peony":
       flora = createPeonyGroup({ ...common, paletteHex: a.flora.paletteHex });
       break;
+    case "dahlia":
+      flora = createDahliaGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "mum":
+      flora = createMumGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "carnation":
+      flora = createCarnationGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
     case "hydrangea":
       flora = createHydrangeaGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "narcissus":
+      flora = createNarcissusGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "lily":
+      flora = createLilyGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "lavender":
+      flora = createLavenderGroup({ ...common, paletteHex: a.flora.paletteHex });
       break;
     case "blossomBranch":
       flora = createBranchesGroup({

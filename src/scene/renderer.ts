@@ -45,12 +45,12 @@ export function createRenderContext(canvas: HTMLCanvasElement): RenderContext {
     0.05,
     20,
   );
-  // High three-quarter view: orbited ~45° counterclockwise from the old
+  // Three-quarter view: orbited ~45° counterclockwise from the old
   // straight-on framing (camera in the southwest, looking northeast into
-  // the room corner) and pitched ~40° down at the vase. Matches the
+  // the room corner), pitched a gentle ~15° down at the vase. Matches the
   // 0.64×-scaled centerpiece in scene.ts.
-  camera.position.set(-0.81, 1.11, 0.81);
-  camera.lookAt(0, 0.15, 0);
+  camera.position.set(-1.02, 0.57, 1.02);
+  camera.lookAt(0, 0.18, 0);
 
   function resize(): void {
     const w = window.innerWidth;

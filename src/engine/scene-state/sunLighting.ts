@@ -16,11 +16,21 @@ export interface SunLightingState {
   colorTempK: number;
   /** Ambient fill level; never fully zero so the wallpaper doesn't go pitch black at night. */
   ambientLevel: number;
+  /**
+   * Image-based-environment (scene.environment) intensity, 0..1. Without
+   * this the IBL lights the scene at full constant strength around the
+   * clock and midnight renders like noon — the DirectionalLight is only
+   * part of what "daylight" means to a PBR material.
+   */
+  environmentLevel: number;
 }
 
 const NIGHT_AMBIENT = 0.12;
 const TWILIGHT_AMBIENT = 0.28;
 const DAY_AMBIENT = 0.38;
+const NIGHT_ENVIRONMENT = 0.06;
+const TWILIGHT_ENVIRONMENT = 0.3;
+const DAY_ENVIRONMENT = 1.0;
 const PEAK_INTENSITY = 3.2;
 const CLOUD_ATTENUATION = 0.85;
 const WARM_K = 1900;
@@ -55,6 +65,10 @@ export function deriveSunLighting(
   const dayMix = smoothstep(0, 15, alt);
   const ambientLevel = ambientBeforeDay + (DAY_AMBIENT - ambientBeforeDay) * dayMix;
 
+  // The IBL environment follows the same curve shape with a deeper night floor.
+  const envBeforeDay = NIGHT_ENVIRONMENT + (TWILIGHT_ENVIRONMENT - NIGHT_ENVIRONMENT) * twilightMix;
+  const environmentLevel = envBeforeDay + (DAY_ENVIRONMENT - envBeforeDay) * dayMix;
+
   // Direct light only exists once the sun clears the horizon, clouds cut it
   // but never fully to zero (diffuse light still gets through an overcast sky).
   const directRamp = smoothstep(0, 20, alt);
@@ -71,5 +85,6 @@ export function deriveSunLighting(
     intensity,
     colorTempK,
     ambientLevel,
+    environmentLevel,
   };
 }

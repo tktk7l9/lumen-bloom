@@ -45,8 +45,9 @@ export function createRenderContext(canvas: HTMLCanvasElement): RenderContext {
     0.05,
     20,
   );
-  camera.position.set(0, 0.28, 1.15);
-  camera.lookAt(0, 0.22, 0);
+  // Framed for the sunflower arrangement: vase 0.32m + stems/heads up to ~0.6m.
+  camera.position.set(0, 0.4, 1.45);
+  camera.lookAt(0, 0.3, 0);
 
   function resize(): void {
     const w = window.innerWidth;

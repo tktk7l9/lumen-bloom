@@ -23,7 +23,13 @@ export function deriveSceneState(
   const mood = weather ? conditionToMood(weather) : neutralMood();
   const baseSun = deriveSunLighting(sun);
   return {
-    sun: { ...baseSun, intensity: baseSun.intensity * mood.sunIntensityMultiplier },
+    sun: {
+      ...baseSun,
+      intensity: baseSun.intensity * mood.sunIntensityMultiplier,
+      // Overcast skies flatten the IBL too, but less than the direct sun —
+      // an overcast day is dimmer, not dark.
+      environmentLevel: baseSun.environmentLevel * (0.55 + 0.45 * mood.sunIntensityMultiplier),
+    },
     mood,
   };
 }

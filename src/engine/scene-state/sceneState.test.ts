@@ -44,6 +44,21 @@ describe("deriveSceneState", () => {
     expect(state.sun.colorTempK).toBe(base.colorTempK);
   });
 
+  it("keeps the environment level unchanged under a clear sky", () => {
+    const base = deriveSunLighting(SUN);
+    const state = deriveSceneState(SUN, snapshot({ condition: "clear" }));
+    expect(state.sun.environmentLevel).toBeCloseTo(base.environmentLevel, 9);
+  });
+
+  it("dims the environment under a storm, but less than the direct sun", () => {
+    const base = deriveSunLighting(SUN);
+    const state = deriveSceneState(SUN, snapshot({ condition: "storm" }));
+    const envRatio = state.sun.environmentLevel / base.environmentLevel;
+    const sunRatio = state.sun.intensity / base.intensity;
+    expect(envRatio).toBeLessThan(1);
+    expect(envRatio).toBeGreaterThan(sunRatio);
+  });
+
   it("returns the exact mood conditionToMood would produce for that snapshot", () => {
     const weather = snapshot({ condition: "rain", precipitationMm: 3 });
     const state = deriveSceneState(SUN, weather);

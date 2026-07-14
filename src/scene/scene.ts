@@ -46,6 +46,7 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
     applySceneState(state: SceneState): void {
       sunRig.update(state.sun.directionEnu, state.sun.intensity, state.sun.colorTempK);
       ambient.intensity = state.sun.ambientLevel;
+      ctx.scene.environmentIntensity = state.sun.environmentLevel;
 
       currentMood = state.mood;
       ctx.fog.density = BASE_FOG_DENSITY * state.mood.fogDensityMultiplier;

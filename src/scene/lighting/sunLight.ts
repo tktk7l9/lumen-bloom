@@ -26,7 +26,7 @@ export function createSunLightRig(): SunLightRig {
   light.shadow.mapSize.set(2048, 2048);
   light.shadow.bias = -5e-4;
   light.shadow.normalBias = 0.005;
-  light.target.position.set(0, 0.2, 0); // roughly the vase+flowers cluster center
+  light.target.position.set(0, 0.3, 0); // roughly the vase+sunflowers cluster center
 
   function update(dirEnu: readonly [number, number, number], intensity: number, colorTempK: number): void {
     light.position.set(

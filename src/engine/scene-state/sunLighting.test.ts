@@ -6,6 +6,7 @@ describe("deriveSunLighting", () => {
     const state = deriveSunLighting({ azimuth: 180, apparentAltitude: -20 });
     expect(state.intensity).toBe(0);
     expect(state.ambientLevel).toBeCloseTo(0.12, 5);
+    expect(state.environmentLevel).toBeCloseTo(0.06, 5);
     expect(state.colorTempK).toBeCloseTo(1900, 5);
   });
 
@@ -13,6 +14,7 @@ describe("deriveSunLighting", () => {
     const state = deriveSunLighting({ azimuth: 180, apparentAltitude: 60 });
     expect(state.intensity).toBeCloseTo(3.2, 5);
     expect(state.ambientLevel).toBeCloseTo(0.38, 5);
+    expect(state.environmentLevel).toBeCloseTo(1.0, 5);
     expect(state.colorTempK).toBeCloseTo(5800, 5);
   });
 
@@ -34,12 +36,13 @@ describe("deriveSunLighting", () => {
     expect(defaulted).toEqual(explicit);
   });
 
-  it("intensity, ambient, and color temperature all rise monotonically with altitude", () => {
+  it("intensity, ambient, environment, and color temperature all rise monotonically with altitude", () => {
     const altitudes = [-90, -30, -10, -6, -3, 0, 3, 8, 15, 20, 40, 60, 90];
     const states = altitudes.map((alt) => deriveSunLighting({ azimuth: 0, apparentAltitude: alt }));
     for (let i = 1; i < states.length; i++) {
       expect(states[i].intensity).toBeGreaterThanOrEqual(states[i - 1].intensity);
       expect(states[i].ambientLevel).toBeGreaterThanOrEqual(states[i - 1].ambientLevel);
+      expect(states[i].environmentLevel).toBeGreaterThanOrEqual(states[i - 1].environmentLevel);
       expect(states[i].colorTempK).toBeGreaterThanOrEqual(states[i - 1].colorTempK);
     }
   });

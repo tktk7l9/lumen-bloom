@@ -10,11 +10,13 @@ export interface VaseProfileOptions {
   segments: number;
 }
 
+// Taller, less bulbous than a classic bud vase — proportioned for a few
+// long-stemmed sunflowers.
 export const DEFAULT_VASE_PROFILE: VaseProfileOptions = {
-  heightM: 0.3,
-  neckRadiusM: 0.045,
-  bellyRadiusM: 0.09,
-  baseRadiusM: 0.05,
+  heightM: 0.32,
+  neckRadiusM: 0.05,
+  bellyRadiusM: 0.078,
+  baseRadiusM: 0.055,
   segments: 24,
 };
 

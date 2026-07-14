@@ -18,6 +18,10 @@ import { createPermissionPrompt } from "./ui/permissionPrompt";
 const FALLBACK_LOCATION: GeoLocation = { lat: 35.6762, lng: 139.6503 }; // Tokyo
 
 const SUN_UPDATE_INTERVAL_SEC = 1;
+// Under reduced motion there's no per-frame loop at all, so the sun is
+// refreshed on a plain timer instead — slower is fine, since a value that
+// moves this little is indistinguishable at 1s vs 5min granularity anyway.
+const SUN_REDUCED_MOTION_REFRESH_MS = 5 * 60 * 1000;
 const WEATHER_POLL_MS = 12 * 60 * 1000;
 // A fetch failure keeps showing the last good weather for a while (a rain
 // scene shouldn't visibly clear up just because one poll failed), but past
@@ -81,13 +85,13 @@ export function startApp(): void {
   }
   tryGeolocate();
 
-  void refreshWeather();
-  window.setInterval(() => void refreshWeather(), WEATHER_POLL_MS);
-
-  if (reducedMotion) return;
-
+  // --- Periodic updates, paused while the tab/window is hidden (battery/CPU) ---
+  let rafId: number | null = null;
+  let weatherIntervalId: number | null = null;
+  let sunIntervalId: number | null = null;
   let last = performance.now();
   let sunAccumulatorSec = 0;
+
   function tick(now: number): void {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
@@ -100,7 +104,43 @@ export function startApp(): void {
 
     rig.update(dt);
     ctx.render();
-    requestAnimationFrame(tick);
+    rafId = requestAnimationFrame(tick);
   }
-  requestAnimationFrame(tick);
+
+  function startPeriodicUpdates(): void {
+    weatherIntervalId = window.setInterval(() => void refreshWeather(), WEATHER_POLL_MS);
+    if (reducedMotion) {
+      sunIntervalId = window.setInterval(() => {
+        applyScene();
+        renderFrame();
+      }, SUN_REDUCED_MOTION_REFRESH_MS);
+    } else {
+      last = performance.now();
+      sunAccumulatorSec = 0;
+      rafId = requestAnimationFrame(tick);
+    }
+  }
+
+  function stopPeriodicUpdates(): void {
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    if (weatherIntervalId !== null) window.clearInterval(weatherIntervalId);
+    if (sunIntervalId !== null) window.clearInterval(sunIntervalId);
+    rafId = null;
+    weatherIntervalId = null;
+    sunIntervalId = null;
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stopPeriodicUpdates();
+    } else {
+      applyScene();
+      void refreshWeather();
+      renderFrame();
+      startPeriodicUpdates();
+    }
+  });
+
+  void refreshWeather();
+  startPeriodicUpdates();
 }

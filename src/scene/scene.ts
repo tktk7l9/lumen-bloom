@@ -50,6 +50,11 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
       currentMood = state.mood;
       ctx.fog.density = BASE_FOG_DENSITY * state.mood.fogDensityMultiplier;
       ambient.color.setHex(state.mood.ambientTintHex);
+      // Apply particle visibility/intensity immediately: under reduced
+      // motion, update(dtSec) above is never called on a timer, so without
+      // this a mood change (e.g. clear → rain) would never actually show
+      // any particles — just a static frame with none, which is wrong.
+      weatherEffects.update(currentMood, 0);
     },
   };
 }

@@ -93,8 +93,11 @@ export function startApp(): void {
   window.addEventListener("resize", renderFrame);
   renderFrame();
 
-  // A URL-pinned location wins over the device's — no GPS request, no prompt.
-  if (overrides.location === null) {
+  // The geolocation API is only called from the prompt's button (a user
+  // gesture): auto-requesting on load annoys first-time visitors and trips
+  // Chrome's no-gesture violation. Returning users ride the saved fix, and
+  // a URL-pinned location wins over everything — no GPS, no prompt.
+  if (overrides.location === null && loadSavedLocation(localStorage) === null) {
     const prompt = createPermissionPrompt(appMount);
     const tryGeolocate = (): void => {
       void requestLocation(navigator.geolocation).then((loc) => {
@@ -106,11 +109,11 @@ export function startApp(): void {
           renderFrame();
           void refreshWeather(); // the previous fetch (if any) was for the old location
         } else {
-          prompt.showDenied(tryGeolocate);
+          prompt.show(tryGeolocate);
         }
       });
     };
-    tryGeolocate();
+    prompt.show(tryGeolocate);
   }
 
   // --- Periodic updates, paused while the tab/window is hidden (battery/CPU) ---
@@ -120,18 +123,32 @@ export function startApp(): void {
   let hudIntervalId: number | null = null;
   let last = performance.now();
   let sunAccumulatorSec = 0;
+  let frameAccumulatorSec = 0;
 
   function tick(nowMs: number): void {
     const dt = Math.min(0.1, (nowMs - last) / 1000);
     last = nowMs;
 
-    sunAccumulatorSec += dt;
+    // Adaptive frame rate: 30fps while something is visibly moving
+    // (particles, lightning, a lighting transition), 10fps for the idle
+    // drift of sun and breeze — a big main-thread/battery win for a
+    // wallpaper that spends most of its life doing almost nothing.
+    frameAccumulatorSec += dt;
+    const targetFps = rig.wantsHighFps() ? 30 : 10;
+    if (frameAccumulatorSec < 1 / targetFps) {
+      rafId = requestAnimationFrame(tick);
+      return;
+    }
+    const step = frameAccumulatorSec;
+    frameAccumulatorSec = 0;
+
+    sunAccumulatorSec += step;
     if (sunAccumulatorSec >= SUN_UPDATE_INTERVAL_SEC) {
       sunAccumulatorSec = 0;
       applyScene();
     }
 
-    rig.update(dt);
+    rig.update(step);
     ctx.render();
     rafId = requestAnimationFrame(tick);
   }

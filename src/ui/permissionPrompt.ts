@@ -7,7 +7,12 @@ import { el } from "./dom";
 const DISMISS_KEY = "lumen-bloom:location-prompt-dismissed";
 
 export interface PermissionPrompt {
-  showDenied(onRetry: () => void): void;
+  /**
+   * Show the pill; the button click triggers `onRequest`. The geolocation
+   * API is only ever called from that click — requesting on page load both
+   * annoys first-time visitors and trips Chrome's no-gesture violation.
+   */
+  show(onRequest: () => void): void;
   hide(): void;
 }
 
@@ -17,7 +22,7 @@ export function createPermissionPrompt(mount: HTMLElement): PermissionPrompt {
     { class: "location-prompt", hidden: true },
     el("span", {}, "位置情報を許可すると、太陽の位置がこの場所に合わせて正確になります。"),
   );
-  const retryButton = el("button", { type: "button" }, "再試行");
+  const retryButton = el("button", { type: "button" }, "位置情報を使う");
   const closeButton = el(
     "button",
     { type: "button", class: "close", "aria-label": "閉じる" },
@@ -35,10 +40,10 @@ export function createPermissionPrompt(mount: HTMLElement): PermissionPrompt {
   let currentHandler: (() => void) | null = null;
 
   return {
-    showDenied(onRetry: () => void): void {
+    show(onRequest: () => void): void {
       if (localStorage.getItem(DISMISS_KEY) !== null) return;
       if (currentHandler) retryButton.removeEventListener("click", currentHandler);
-      currentHandler = onRetry;
+      currentHandler = onRequest;
       retryButton.addEventListener("click", currentHandler);
       node.hidden = false;
     },

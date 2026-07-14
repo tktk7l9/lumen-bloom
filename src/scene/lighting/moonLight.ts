@@ -19,7 +19,7 @@ export function createMoonLightRig(): MoonLightRig {
   light.shadow.camera.bottom = -SHADOW_HALF_EXTENT_M;
   light.shadow.camera.near = 0.1;
   light.shadow.camera.far = 5;
-  light.shadow.mapSize.set(1024, 1024);
+  light.shadow.mapSize.set(768, 768);
   light.shadow.bias = -5e-4;
   light.shadow.normalBias = 0.005;
   light.target.position.copy(TARGET);

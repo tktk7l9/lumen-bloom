@@ -27,7 +27,7 @@ export function createRenderContext(canvas: HTMLCanvasElement): RenderContext {
     alpha: false,
     powerPreference: "high-performance",
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(BACKDROP, 1);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -57,7 +57,7 @@ export function createRenderContext(canvas: HTMLCanvasElement): RenderContext {
     const h = window.innerHeight;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     renderer.setSize(w, h);
   }
 

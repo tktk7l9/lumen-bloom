@@ -15,6 +15,13 @@ import { createWeatherEffects } from "./weatherFx";
 export interface SceneRig {
   update(dtSec: number): void;
   applySceneState(state: SceneState): void;
+  /**
+   * Whether the scene currently benefits from a high frame rate — particles
+   * falling, lightning armed, or a lighting transition in flight. Everything
+   * else (breeze, the slowly drifting sun) reads fine at a low frame rate,
+   * which is what an always-on wallpaper should idle at.
+   */
+  wantsHighFps(): boolean;
 }
 
 // The "clear sky" baseline that mood.fogDensityMultiplier scales from.
@@ -132,6 +139,11 @@ export function createSceneRig(
     if (!current) return;
     sunRig.update(current.dirEnu, current.sunIntensity, current.colorTempK);
     moonRig.update(current.moonDirEnu, current.moonIntensity);
+    // Skip a whole shadow pass for whichever light is effectively off —
+    // during the day that's the moon, at night the sun.
+    sunRig.light.castShadow = current.sunIntensity > 0.01;
+    sunRig.gobo.visible = current.sunIntensity > 0.01;
+    moonRig.light.castShadow = current.moonIntensity > 0.005;
     ambient.intensity = current.ambientLevel;
     ambient.color.copy(current.ambientTint);
     ctx.scene.environmentIntensity = current.environmentLevel;
@@ -162,7 +174,22 @@ export function createSceneRig(
     }
   }
 
+  function transitionActive(): boolean {
+    if (!current || !target) return false;
+    return (
+      Math.abs(current.sunIntensity - target.sunIntensity) > 0.01 ||
+      Math.abs(current.moonIntensity - target.moonIntensity) > 0.005 ||
+      Math.abs(current.ambientLevel - target.ambientLevel) > 0.005 ||
+      Math.abs(current.environmentLevel - target.environmentLevel) > 0.005 ||
+      Math.abs(current.fogDensity - target.fogDensity) > 0.005 ||
+      Math.abs(current.glassRoughness - target.glassRoughness) > 0.01
+    );
+  }
+
   return {
+    wantsHighFps(): boolean {
+      return currentMood.particle !== "none" || currentMood.lightning || transitionActive();
+    },
     update(dtSec: number): void {
       elapsedSec += dtSec;
       if (current && target) {

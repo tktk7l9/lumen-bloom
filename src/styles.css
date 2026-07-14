@@ -95,6 +95,19 @@ body {
   display: none;
 }
 
+/* Static wordmark: paints with the first CSS frame, giving the page a
+   text LCP long before the 3D scene's first render. */
+.wordmark {
+  position: fixed;
+  top: 1.1rem;
+  left: 1.3rem;
+  color: #8d96ab;
+  font: 500 0.92rem/1 system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
 .location-prompt button {
   flex: none;
   padding: 0.35rem 0.8rem;

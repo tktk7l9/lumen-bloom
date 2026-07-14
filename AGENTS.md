@@ -7,7 +7,7 @@
 
 - **Vanilla Vite + TypeScript**。フレームワーク不使用。UIはDOM直組み(`src/ui/`)。
 - **lib(engine)層 = Three.js非依存の純関数のみ**(`src/engine/**`)。scene層(`src/scene/**`)はThree.jsの組み立てのみで、engine層の出力を受け取って描画するだけに留める。花瓶・花のプロシージャル生成もこの原則で「プロファイル計算(engine)」と「ジオメトリ組み立て(scene)」を分離する。
-- **オブジェクトはプロシージャル生成**。外部3Dアセット(GLTF等)は使わない方針(CSP自己完結・ライセンス不要の維持)。`src/scene/objects/registry.ts`の登録機構経由で追加(ひまわり`vaseFactory.ts`とチューリップ`tulipFactory.ts`を登録済み。`?obj=`で選択)。
+- **オブジェクトはプロシージャル生成**。外部3Dアセット(GLTF等)は使わない方針(CSP自己完結・ライセンス不要の維持)。季節アレンジは`src/engine/arrangements.ts`のカタログ(純データ・週選択ロジック込みで100%テスト)+`src/scene/objects/arrangementFactory.ts`(カタログ→Three.jsグループ)+`objects/flora/`の種別ビルダー。新しい花を足すときはこの3点セット(カタログエントリ→floraビルダー→factoryのswitch)。`?obj=`で固定可。
 - **厳格CSP前提**(`vercel.json`)。inline script/style禁止。外部リソースは天気API(`connect-src`に`https://api.open-meteo.com`のみ追加)。ガラス質感の環境マップは`three/examples/jsm/environments/RoomEnvironment.js`(完全プロシージャル)、窓格子goboや雨雪スプライトもCanvasTextureで生成し、外部画像は一切使わない。
 - **Permissions-Policy は `geolocation=(self), screen-wake-lock=(self)`**。テンプレ由来の全拒否(`geolocation=()`)に戻さないこと(現在地取得が主機能のため)。cameraは`()`のまま。
 - **描画の落とし穴(実測で確認済みの知見)**: ①`scene.environment`のIBLは太陽と無関係に24時間照らすので`environmentIntensity`を昼夜カーブに必ず連動させる ②transmissionガラス内のアルファ透過(水)はガラスがdepthWriteすると消える→ガラスは`depthWrite: false` ③壁はcastShadow禁止(太陽が壁の裏に回る時間帯に全画面が黒くなる) ④窓goboはcolorWrite/depthWrite無効+alphaTestでシャドウマップにのみ寄与させる。

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { VaseStyle } from "../../engine/arrangements";
 import { offsetProfileInward } from "../../engine/geometry/profileOffset";
 import {
   DEFAULT_VASE_PROFILE,
@@ -6,6 +7,8 @@ import {
   type VaseProfileOptions,
   vaseProfile,
 } from "../../engine/geometry/vaseProfile";
+
+const DEFAULT_STYLE: VaseStyle = { kind: "glass", colorHex: 0xf4fbf9 };
 
 const WALL_M = 0.004;
 const WATER_LEVEL_FRAC = 0.62;
@@ -25,7 +28,11 @@ function radiusAtY(profile: readonly ProfilePoint[], y: number): number {
   return profile[profile.length - 1][0];
 }
 
-function createGlassMesh(outer: readonly ProfilePoint[], inner: readonly ProfilePoint[]): THREE.Mesh {
+function createVesselMesh(
+  outer: readonly ProfilePoint[],
+  inner: readonly ProfilePoint[],
+  style: VaseStyle,
+): THREE.Mesh {
   // One closed lathe polyline: bottom center → up the outer wall → over the
   // rim → back down the inner wall → inner bottom. Real wall thickness is
   // what makes glass read as glass — a single zero-thickness surface has no
@@ -38,24 +45,35 @@ function createGlassMesh(outer: readonly ProfilePoint[], inner: readonly Profile
   }
   profile.push(new THREE.Vector2(AXIS_R, WALL_M));
 
-  const material = new THREE.MeshPhysicalMaterial({
-    color: 0xf4fbf9,
-    roughness: 0.04,
-    transmission: 1.0,
-    thickness: 0.008,
-    ior: 1.5,
-    envMapIntensity: 0.8,
-    clearcoat: 0.5,
-    clearcoatRoughness: 0.2,
-    // Without this the glass writes depth and the alpha-blended water inside
-    // it fails the depth test entirely — transmissive surfaces render before
-    // the transparent pass, so an interior water body is only compositable
-    // over the glass if the glass leaves the depth buffer alone.
-    depthWrite: false,
-  });
+  const material =
+    style.kind === "glass"
+      ? new THREE.MeshPhysicalMaterial({
+          color: style.colorHex,
+          roughness: 0.04,
+          transmission: 1.0,
+          thickness: 0.008,
+          ior: 1.5,
+          envMapIntensity: 0.8,
+          clearcoat: 0.5,
+          clearcoatRoughness: 0.2,
+          // Without this the glass writes depth and the alpha-blended water
+          // inside it fails the depth test entirely — transmissive surfaces
+          // render before the transparent pass, so an interior water body is
+          // only compositable over the glass if the glass leaves the depth
+          // buffer alone.
+          depthWrite: false,
+        })
+      : new THREE.MeshPhysicalMaterial({
+          color: style.colorHex,
+          roughness: 0.38,
+          clearcoat: 0.45,
+          clearcoatRoughness: 0.3,
+        });
 
   const mesh = new THREE.Mesh(new THREE.LatheGeometry(profile, 72), material);
-  mesh.name = "vase-glass"; // findable by the scene rig for frost styling
+  // Findable by the scene rig for frost styling — glazed ceramic doesn't
+  // frost over, so only glass gets the name.
+  mesh.name = style.kind === "glass" ? "vase-glass" : "vase-ceramic";
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   return mesh;
@@ -124,14 +142,20 @@ function createWaterGroup(inner: readonly ProfilePoint[], heightM: number): THRE
   return group;
 }
 
-/** Hollow glass vase with visible wall thickness, part-filled with water. */
-export function createVaseGroup(opts?: Partial<VaseProfileOptions>): THREE.Group {
+/**
+ * Hollow vessel with visible wall thickness. Glass styles get a visible
+ * water fill; ceramic is opaque, so water would be invisible and is skipped.
+ */
+export function createVaseGroup(
+  opts?: Partial<VaseProfileOptions>,
+  style: VaseStyle = DEFAULT_STYLE,
+): THREE.Group {
   const o: VaseProfileOptions = { ...DEFAULT_VASE_PROFILE, ...opts };
   const outer = vaseProfile(opts);
   const inner = offsetProfileInward(outer, WALL_M, 0.004);
 
   const group = new THREE.Group();
-  group.add(createGlassMesh(outer, inner));
-  group.add(createWaterGroup(inner, o.heightM));
+  group.add(createVesselMesh(outer, inner, style));
+  if (style.kind === "glass") group.add(createWaterGroup(inner, o.heightM));
   return group;
 }

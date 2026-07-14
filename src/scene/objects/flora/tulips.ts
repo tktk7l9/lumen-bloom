@@ -1,18 +1,21 @@
 import * as THREE from "three";
-import { type BouquetOptions, layoutBouquet } from "../../engine/geometry/flowerLayout";
-import { petalGrid } from "../../engine/geometry/petalGrid";
-import { DEFAULT_VASE_PROFILE } from "../../engine/geometry/vaseProfile";
-import { addRadialRing, attachBreeze, gridToGeometry } from "./flowers";
-import { registerSceneObject } from "./registry";
-import { createVaseGroup } from "./vase";
-
-export const TULIP_OBJECT_ID = "vase-tulips";
+import { layoutBouquet } from "../../../engine/geometry/flowerLayout";
+import { petalGrid } from "../../../engine/geometry/petalGrid";
+import { addRadialRing, attachBreeze, gridToGeometry } from "../flowers";
 
 const UP = new THREE.Vector3(0, 1, 0);
-const PALETTE = [0xd7443e, 0xe86fa4, 0xf2b93d, 0x9a5fc2];
 
-function createTulipsGroup(opts?: Partial<BouquetOptions>): THREE.Group {
-  const stems = layoutBouquet({ stemCount: 5, seed: 8, ...opts });
+export interface TulipOptions {
+  paletteHex: readonly number[];
+  stemCount: number;
+  seed: number;
+  vaseRimYM: number;
+  vaseNeckRadiusM: number;
+}
+
+/** Cup-shaped six-petal tulips; heads face mostly upward. */
+export function createTulipsGroup(opts: TulipOptions): THREE.Group {
+  const stems = layoutBouquet(opts);
   const group = new THREE.Group();
   const stemGroups: THREE.Group[] = [];
 
@@ -67,14 +70,13 @@ function createTulipsGroup(opts?: Partial<BouquetOptions>): THREE.Group {
     const head = new THREE.Group();
     head.position.set(...stem.headPosition);
     const [dx, , dz] = stem.headDirection;
-    head.quaternion.setFromUnitVectors(
-      UP,
-      new THREE.Vector3(dx * 0.3, 1, dz * 0.3).normalize(),
-    );
+    head.quaternion.setFromUnitVectors(UP, new THREE.Vector3(dx * 0.3, 1, dz * 0.3).normalize());
 
     const cupR = stem.headRadiusM * 0.28;
     const petalLen = stem.headRadiusM * 0.62;
-    const tint = new THREE.Color(PALETTE[Math.floor(stem.colorSeed * PALETTE.length)]);
+    const tint = new THREE.Color(
+      opts.paletteHex[Math.floor(stem.colorSeed * opts.paletteHex.length)] ?? 0xd7443e,
+    );
     const innerTint = tint.clone().multiplyScalar(0.9);
 
     // Two offset rings of three near-vertical petals form the closed cup.
@@ -109,19 +111,3 @@ function createTulipsGroup(opts?: Partial<BouquetOptions>): THREE.Group {
   attachBreeze(group, stemGroups);
   return group;
 }
-
-registerSceneObject({
-  id: TULIP_OBJECT_ID,
-  displayName: "花瓶とチューリップ",
-  create(): THREE.Group {
-    const group = new THREE.Group();
-    group.add(createVaseGroup());
-    const tulips = createTulipsGroup({
-      vaseRimYM: DEFAULT_VASE_PROFILE.heightM,
-      vaseNeckRadiusM: DEFAULT_VASE_PROFILE.neckRadiusM,
-    });
-    group.add(tulips);
-    group.userData.update = tulips.userData.update;
-    return group;
-  },
-});

@@ -1,20 +1,21 @@
 import * as THREE from "three";
+import type { Arrangement } from "../engine/arrangements";
 import { neutralMood } from "../engine/weather/mapping";
 import type { WeatherMood } from "../engine/weather/types";
 import type { SceneState } from "../engine/scene-state/sceneState";
 import { applyProceduralEnvironment } from "./environment";
 import { createMoonLightRig } from "./lighting/moonLight";
 import { createSunLightRig } from "./lighting/sunLight";
+import { createArrangement } from "./objects/arrangementFactory";
 import { BASE_FLOOR_COLOR, createRoom, SNOW_FLOOR_COLOR } from "./objects/room";
-import { getSceneObject } from "./objects/registry";
-import "./objects/tulipFactory"; // registers the tulip centerpiece
-import { VASE_OBJECT_ID } from "./objects/vaseFactory"; // also registers it as a side effect
 import type { RenderContext } from "./renderer";
 import { createWeatherEffects } from "./weatherFx";
 
 export interface SceneRig {
   update(dtSec: number): void;
   applySceneState(state: SceneState): void;
+  /** Swap the centerpiece (weekly seasonal rotation / ?obj= pin). */
+  setArrangement(arrangement: Arrangement): void;
   /**
    * Whether the scene currently benefits from a high frame rate — particles
    * falling or lightning armed. Everything else (breeze, lighting fades,
@@ -84,12 +85,19 @@ function cloneLighting(l: Lighting): Lighting {
   };
 }
 
-/** Assembles the room + centerpiece object under the sun/moon light rigs + weather mood. */
-export function createSceneRig(
-  ctx: RenderContext,
-  reducedMotion = false,
-  objectId: string | null = null,
-): SceneRig {
+function disposeDeep(root: THREE.Object3D): void {
+  root.traverse((obj) => {
+    if (obj instanceof THREE.Mesh || obj instanceof THREE.Points) {
+      obj.geometry.dispose();
+      const material = obj.material as THREE.Material | THREE.Material[];
+      if (Array.isArray(material)) material.forEach((m) => m.dispose());
+      else material.dispose();
+    }
+  });
+}
+
+/** Assembles the room + centerpiece arrangement under the sun/moon light rigs + weather mood. */
+export function createSceneRig(ctx: RenderContext, reducedMotion = false): SceneRig {
   applyProceduralEnvironment(ctx.renderer, ctx.scene);
 
   const ambient = new THREE.AmbientLight(0x445066, 0.5);
@@ -109,14 +117,23 @@ export function createSceneRig(
   const room = createRoom();
   ctx.scene.add(room.group);
 
-  const factory = getSceneObject(objectId ?? VASE_OBJECT_ID) ?? getSceneObject(VASE_OBJECT_ID);
+  // The centerpiece is installed via setArrangement() — initially by the
+  // orchestrator's first applyScene, then again whenever the weekly
+  // seasonal rotation rolls over.
+  let centerpiece: THREE.Group | null = null;
   let centerpieceUpdate: ((tSec: number) => void) | null = null;
   let glassMaterial: THREE.MeshPhysicalMaterial | null = null;
-  if (factory) {
-    const centerpiece = factory.create();
+
+  function setArrangement(arrangement: Arrangement): void {
+    if (centerpiece) {
+      ctx.scene.remove(centerpiece);
+      disposeDeep(centerpiece);
+    }
+    centerpiece = createArrangement(arrangement);
     centerpiece.scale.setScalar(0.64); // two sizes smaller in frame; still standing on y=0
     ctx.scene.add(centerpiece);
     centerpieceUpdate = (centerpiece.userData.update as ((t: number) => void) | undefined) ?? null;
+    glassMaterial = null;
     centerpiece.traverse((obj) => {
       if (obj instanceof THREE.Mesh && obj.name === "vase-glass") {
         glassMaterial = obj.material as THREE.MeshPhysicalMaterial;
@@ -175,6 +192,7 @@ export function createSceneRig(
   }
 
   return {
+    setArrangement,
     wantsHighFps(): boolean {
       // Lighting transitions deliberately don't count: they're slow
       // luminance/color ramps, perfectly smooth at the 10fps base rate.

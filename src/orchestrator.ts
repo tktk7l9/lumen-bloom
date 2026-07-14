@@ -5,6 +5,7 @@
 // can pin the location (?lat=&lng=), shift time (?t=), pick the centerpiece
 // (?obj=), or force the HUD (?hud=).
 
+import { arrangementForDate, findArrangement } from "./engine/arrangements";
 import { moonPosition } from "./engine/astro/lunar";
 import { moonPhase } from "./engine/astro/moonphase";
 import { sunPosition } from "./engine/astro/solar";
@@ -58,15 +59,28 @@ export function startApp(): void {
   prompt?.show(() => requestGeolocation?.());
 
   const ctx = createRenderContext(canvas);
-  const rig = createSceneRig(ctx, reducedMotion, overrides.objectId);
+  const rig = createSceneRig(ctx, reducedMotion);
   setupWakeLock();
 
   let currentLocation: GeoLocation =
     overrides.location ?? loadSavedLocation(localStorage) ?? FALLBACK_LOCATION;
   let currentWeather: WeatherSnapshot | null = null;
+  let currentArrangementId: string | null = null;
+
+  // ?obj= pins one arrangement; otherwise the weekly seasonal rotation
+  // decides, re-checked every applyScene so a wallpaper left running for
+  // weeks swaps its flowers when the week rolls over.
+  const pinnedArrangement = overrides.objectId ? findArrangement(overrides.objectId) : null;
 
   function applyScene(): void {
     const date = now();
+
+    const arrangement = pinnedArrangement ?? arrangementForDate(date, currentLocation.lat);
+    if (arrangement.id !== currentArrangementId) {
+      currentArrangementId = arrangement.id;
+      rig.setArrangement(arrangement);
+    }
+
     const sun = sunPosition(date, currentLocation);
     const phase = moonPhase(date);
     const moon = {
@@ -77,6 +91,7 @@ export function startApp(): void {
     hud.render({
       now: date,
       weather: currentWeather,
+      arrangementName: arrangement.name,
       moonPhaseName: sun.apparentAltitude < -6 ? phase.name : null,
     });
   }

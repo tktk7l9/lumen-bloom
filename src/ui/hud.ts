@@ -21,6 +21,8 @@ const CONDITION_LABELS: Record<WeatherSnapshot["condition"], string> = {
 export interface HudData {
   now: Date;
   weather: WeatherSnapshot | null;
+  /** This week's seasonal arrangement (花の名前). */
+  arrangementName: string | null;
   /** Shown at night instead of nothing — the moon phase glyph. */
   moonPhaseName: MoonPhaseName | null;
 }
@@ -56,6 +58,7 @@ export function createHud(mount: HTMLElement, forced: boolean | null): Hud {
           `${CONDITION_LABELS[data.weather.condition]} ${Math.round(data.weather.temperatureC)}°C`,
         );
       }
+      if (data.arrangementName) parts.push(data.arrangementName);
       if (data.moonPhaseName) parts.push(moonGlyph(data.moonPhaseName));
       node.textContent = parts.join(" · ");
     },

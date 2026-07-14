@@ -1,4 +1,8 @@
 import * as THREE from "three";
+import { applyProceduralEnvironment } from "./environment";
+import { createPedestal } from "./objects/pedestal";
+import { getSceneObject } from "./objects/registry";
+import { VASE_OBJECT_ID } from "./objects/vaseFactory"; // also registers it as a side effect
 import type { RenderContext } from "./renderer";
 
 export interface SceneRig {
@@ -6,12 +10,13 @@ export interface SceneRig {
 }
 
 /**
- * Placeholder tabletop scene: a lit sphere + shadow-catching ground disc.
- * The sphere stands in for the procedural vase+flowers (added once the
- * geometry engine lands), and the fixed key light stands in for the real
- * sun rig (added once geolocation + solar position are wired in).
+ * Assembles the pedestal + centerpiece object under a temporary fixed key
+ * light. The key light stands in for the real sun rig, added once
+ * geolocation + solar position are wired in.
  */
 export function createSceneRig(ctx: RenderContext): SceneRig {
+  applyProceduralEnvironment(ctx.renderer, ctx.scene);
+
   const ambient = new THREE.AmbientLight(0x445066, 0.5);
   ctx.scene.add(ambient);
 
@@ -29,26 +34,14 @@ export function createSceneRig(ctx: RenderContext): SceneRig {
   key.shadow.normalBias = 0.005;
   ctx.scene.add(key, key.target);
 
-  const placeholder = new THREE.Mesh(
-    new THREE.SphereGeometry(0.12, 32, 32),
-    new THREE.MeshStandardMaterial({ color: 0x8fc6e8, roughness: 0.3, metalness: 0.1 }),
-  );
-  placeholder.position.y = 0.12;
-  placeholder.castShadow = true;
-  placeholder.receiveShadow = true;
-  ctx.scene.add(placeholder);
+  ctx.scene.add(createPedestal());
 
-  const ground = new THREE.Mesh(
-    new THREE.CircleGeometry(0.8, 48),
-    new THREE.ShadowMaterial({ opacity: 0.45 }),
-  );
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  ctx.scene.add(ground);
+  const factory = getSceneObject(VASE_OBJECT_ID);
+  if (factory) ctx.scene.add(factory.create());
 
   return {
-    update(dtSec: number): void {
-      placeholder.rotation.y += dtSec * 0.2;
+    update(_dtSec: number): void {
+      // Sun/weather-driven updates land here once wired in (Tasks 5-8).
     },
   };
 }

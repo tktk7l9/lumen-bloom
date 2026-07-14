@@ -45,8 +45,8 @@ export function createRenderContext(canvas: HTMLCanvasElement): RenderContext {
     0.05,
     20,
   );
-  camera.position.set(0, 0.35, 1.1);
-  camera.lookAt(0, 0.15, 0);
+  camera.position.set(0, 0.28, 1.15);
+  camera.lookAt(0, 0.22, 0);
 
   function resize(): void {
     const w = window.innerWidth;

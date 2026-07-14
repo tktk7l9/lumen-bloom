@@ -33,11 +33,13 @@ export interface SunLightingState {
   dayFactor: number;
 }
 
-const NIGHT_AMBIENT = 0.12;
-const TWILIGHT_AMBIENT = 0.28;
+// Night floors sit well above zero: a moonless night should read as a dim
+// blue room you can still see into, not a black screen.
+const NIGHT_AMBIENT = 0.2;
+const TWILIGHT_AMBIENT = 0.3;
 const DAY_AMBIENT = 0.38;
-const NIGHT_ENVIRONMENT = 0.06;
-const TWILIGHT_ENVIRONMENT = 0.18;
+const NIGHT_ENVIRONMENT = 0.14;
+const TWILIGHT_ENVIRONMENT = 0.22;
 const DAY_ENVIRONMENT = 0.55;
 const TWILIGHT_DAY_FACTOR = 0.3;
 const PEAK_INTENSITY = 2.6;

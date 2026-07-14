@@ -5,8 +5,8 @@ describe("deriveSunLighting", () => {
   it("is dark, warm, and dim-but-not-zero well below the horizon", () => {
     const state = deriveSunLighting({ azimuth: 180, apparentAltitude: -20 });
     expect(state.intensity).toBe(0);
-    expect(state.ambientLevel).toBeCloseTo(0.12, 5);
-    expect(state.environmentLevel).toBeCloseTo(0.06, 5);
+    expect(state.ambientLevel).toBeCloseTo(0.2, 5);
+    expect(state.environmentLevel).toBeCloseTo(0.14, 5);
     expect(state.dayFactor).toBe(0);
     expect(state.colorTempK).toBeCloseTo(1900, 5);
   });

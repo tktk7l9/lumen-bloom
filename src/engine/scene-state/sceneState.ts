@@ -26,7 +26,7 @@ export interface SceneState {
   temperatureC: number | null;
 }
 
-const NIGHT_BACKDROP = 0x03040a;
+const NIGHT_BACKDROP = 0x0b101c;
 const MOON_ABSENT: MoonLightingState = { directionEnu: [0, 1, 0], intensity: 0 };
 
 /**

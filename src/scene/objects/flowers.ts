@@ -272,7 +272,9 @@ export function attachBreeze(group: THREE.Group, stems: readonly THREE.Group[]):
     node,
     phase: i * 2.1,
     freqHz: 0.22 + (i % 3) * 0.07,
-    amplitudeRad: 0.012 + (i % 2) * 0.004,
+    // Barely-there indoor air movement — at ~0.4° of tilt the flower heads
+    // drift a millimeter or two, which reads as alive without drawing the eye.
+    amplitudeRad: 0.006 + (i % 2) * 0.002,
   }));
   group.userData.update = (tSec: number): void => {
     for (const s of entries) {

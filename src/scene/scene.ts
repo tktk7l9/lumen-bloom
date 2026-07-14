@@ -19,6 +19,40 @@ export interface SceneRig {
 // that mood.fogDensityMultiplier scales from.
 const BASE_FOG_DENSITY = 0.5;
 
+// Exponential-smoothing time constant for lighting changes. The first real
+// weather fetch lands a few hundred ms after the clear-sky first paint, and
+// snapping the whole scene to the new mood in one frame reads as a glitch —
+// this eases every lighting quantity there over a couple of seconds instead.
+const TRANSITION_TAU_SEC = 2;
+
+interface Lighting {
+  dirEnu: readonly [number, number, number];
+  sunIntensity: number;
+  colorTempK: number;
+  ambientLevel: number;
+  environmentLevel: number;
+  fogDensity: number;
+  ambientTint: THREE.Color;
+  backdrop: THREE.Color;
+}
+
+function lightingFrom(state: SceneState): Lighting {
+  return {
+    dirEnu: state.sun.directionEnu,
+    sunIntensity: state.sun.intensity,
+    colorTempK: state.sun.colorTempK,
+    ambientLevel: state.sun.ambientLevel,
+    environmentLevel: state.sun.environmentLevel,
+    fogDensity: BASE_FOG_DENSITY * state.mood.fogDensityMultiplier,
+    ambientTint: new THREE.Color(state.mood.ambientTintHex),
+    backdrop: new THREE.Color(state.backdropHex),
+  };
+}
+
+function cloneLighting(l: Lighting): Lighting {
+  return { ...l, ambientTint: l.ambientTint.clone(), backdrop: l.backdrop.clone() };
+}
+
 /** Assembles the ground + centerpiece object under the real sun light rig + weather mood. */
 export function createSceneRig(ctx: RenderContext, reducedMotion = false): SceneRig {
   applyProceduralEnvironment(ctx.renderer, ctx.scene);
@@ -42,27 +76,52 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
   ctx.scene.add(weatherEffects.group);
 
   let currentMood: WeatherMood = neutralMood();
+  let current: Lighting | null = null;
+  let target: Lighting | null = null;
+
+  function applyCurrent(): void {
+    if (!current) return;
+    sunRig.update(current.dirEnu, current.sunIntensity, current.colorTempK);
+    ambient.intensity = current.ambientLevel;
+    ambient.color.copy(current.ambientTint);
+    ctx.scene.environmentIntensity = current.environmentLevel;
+    ctx.fog.density = current.fogDensity;
+    ctx.fog.color.copy(current.backdrop);
+    // Backdrop + fog track the real-world brightness at the viewer's
+    // location: the mood's daylight sky tint faded toward black at night.
+    ctx.renderer.setClearColor(current.backdrop, 1);
+  }
 
   return {
     update(dtSec: number): void {
+      if (current && target) {
+        const k = 1 - Math.exp(-dtSec / TRANSITION_TAU_SEC);
+        current.dirEnu = target.dirEnu; // continuous already — no easing needed
+        current.sunIntensity += (target.sunIntensity - current.sunIntensity) * k;
+        current.colorTempK += (target.colorTempK - current.colorTempK) * k;
+        current.ambientLevel += (target.ambientLevel - current.ambientLevel) * k;
+        current.environmentLevel += (target.environmentLevel - current.environmentLevel) * k;
+        current.fogDensity += (target.fogDensity - current.fogDensity) * k;
+        current.ambientTint.lerp(target.ambientTint, k);
+        current.backdrop.lerp(target.backdrop, k);
+        applyCurrent();
+      }
       weatherEffects.update(currentMood, dtSec);
     },
     applySceneState(state: SceneState): void {
-      sunRig.update(state.sun.directionEnu, state.sun.intensity, state.sun.colorTempK);
-      ambient.intensity = state.sun.ambientLevel;
-      ctx.scene.environmentIntensity = state.sun.environmentLevel;
-
+      target = lightingFrom(state);
       currentMood = state.mood;
-      ctx.fog.density = BASE_FOG_DENSITY * state.mood.fogDensityMultiplier;
-      ambient.color.setHex(state.mood.ambientTintHex);
-      // Backdrop + fog track the real-world brightness at the viewer's
-      // location: the mood's daylight sky tint faded toward black at night.
-      ctx.renderer.setClearColor(state.backdropHex, 1);
-      ctx.fog.color.setHex(state.backdropHex);
+      // First paint and reduced motion snap directly — there is either
+      // nothing on screen yet to transition from, or no frame loop to
+      // animate the transition with.
+      if (current === null || reducedMotion) {
+        current = cloneLighting(target);
+        applyCurrent();
+      }
       // Apply particle visibility/intensity immediately: under reduced
-      // motion, update(dtSec) above is never called on a timer, so without
-      // this a mood change (e.g. clear → rain) would never actually show
-      // any particles — just a static frame with none, which is wrong.
+      // motion, update(dtSec) is never called on a timer, so without this a
+      // mood change (e.g. clear → rain) would never actually show any
+      // particles — just a static frame with none, which is wrong.
       weatherEffects.update(currentMood, 0);
     },
   };

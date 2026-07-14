@@ -16,13 +16,17 @@ export function wmoToCondition(code: number): WeatherCondition {
 
 type MoodBase = Omit<WeatherMood, "particleIntensity">;
 
+// Overcast conditions keep a blue cast and a healthy sun multiplier on
+// purpose: cloudy is the single most common state the wallpaper will sit
+// in, and a fully desaturated grey preset made the whole scene look drab
+// the moment the first real weather fetch replaced the clear-sky default.
 const MOODS: Record<WeatherCondition, MoodBase> = {
   clear: { ambientTintHex: 0x223047, skyTintHex: 0x8fa3c0, fogDensityMultiplier: 0.7, sunIntensityMultiplier: 1.0, particle: "none" },
-  cloudy: { ambientTintHex: 0x2c3442, skyTintHex: 0x79828e, fogDensityMultiplier: 1.3, sunIntensityMultiplier: 0.55, particle: "none" },
-  fog: { ambientTintHex: 0x333c48, skyTintHex: 0x868d96, fogDensityMultiplier: 2.4, sunIntensityMultiplier: 0.35, particle: "none" },
-  rain: { ambientTintHex: 0x1c2430, skyTintHex: 0x525c68, fogDensityMultiplier: 1.6, sunIntensityMultiplier: 0.4, particle: "rain" },
-  snow: { ambientTintHex: 0x3a4250, skyTintHex: 0x8b929c, fogDensityMultiplier: 1.4, sunIntensityMultiplier: 0.5, particle: "snow" },
-  storm: { ambientTintHex: 0x161a22, skyTintHex: 0x3a414c, fogDensityMultiplier: 2.0, sunIntensityMultiplier: 0.25, particle: "rain" },
+  cloudy: { ambientTintHex: 0x334059, skyTintHex: 0x8494ab, fogDensityMultiplier: 1.15, sunIntensityMultiplier: 0.72, particle: "none" },
+  fog: { ambientTintHex: 0x3a4351, skyTintHex: 0x9099a4, fogDensityMultiplier: 2.2, sunIntensityMultiplier: 0.5, particle: "none" },
+  rain: { ambientTintHex: 0x243040, skyTintHex: 0x5d6a7a, fogDensityMultiplier: 1.5, sunIntensityMultiplier: 0.5, particle: "rain" },
+  snow: { ambientTintHex: 0x414a5a, skyTintHex: 0x949ba7, fogDensityMultiplier: 1.35, sunIntensityMultiplier: 0.55, particle: "snow" },
+  storm: { ambientTintHex: 0x1a2029, skyTintHex: 0x3d4552, fogDensityMultiplier: 1.9, sunIntensityMultiplier: 0.3, particle: "rain" },
 };
 
 const PRECIPITATION_FOR_FULL_INTENSITY_MM = 5;

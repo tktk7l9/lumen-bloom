@@ -1,29 +1,34 @@
-// Placeholder runtime — replaced by the Three.js scene + sun/weather wiring
-// in later phases. For now it only proves the dev/build pipeline works end
-// to end (canvas present, dynamic import resolves, dark backdrop renders).
+// Geolocation → sun position → weather → scene wiring lands here in later
+// phases. For now this drives just the Three.js render/resize loop.
+
+import { createRenderContext } from "./scene/renderer";
+import { createSceneRig } from "./scene/scene";
 
 export function startApp(): void {
   const canvas = document.querySelector<HTMLCanvasElement>("#scene");
   if (!canvas) return;
 
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const ctx = createRenderContext(canvas);
+  const rig = createSceneRig(ctx);
 
-  function resize(): void {
-    canvas!.width = window.innerWidth;
-    canvas!.height = window.innerHeight;
-    draw();
+  function renderFrame(): void {
+    ctx.resize();
+    ctx.render();
   }
 
-  function draw(): void {
-    ctx!.fillStyle = "#03040a";
-    ctx!.fillRect(0, 0, canvas!.width, canvas!.height);
-    ctx!.fillStyle = "#5a6b8c";
-    ctx!.font = "16px system-ui, sans-serif";
-    ctx!.textAlign = "center";
-    ctx!.fillText("Lumen Bloom — scene coming soon", canvas!.width / 2, canvas!.height / 2);
-  }
+  window.addEventListener("resize", renderFrame);
+  renderFrame();
 
-  window.addEventListener("resize", resize);
-  resize();
+  if (reducedMotion) return;
+
+  let last = performance.now();
+  function tick(now: number): void {
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    rig.update(dt);
+    ctx.render();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }

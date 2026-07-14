@@ -1,28 +1,34 @@
-// Weather + real Geolocation wiring land here in later phases. For now the
-// sun uses a fixed provisional location; the render loop recomputes its
-// real-time position on a slow cadence since it barely moves frame to frame.
+// Weather wiring lands in a later phase. The sun uses the device's real
+// location when available (falling back to Tokyo otherwise); the render
+// loop recomputes its position on a slow cadence since it barely moves
+// frame to frame.
 
 import { sunPosition } from "./engine/astro/solar";
 import type { GeoLocation } from "./engine/astro/types";
+import { loadSavedLocation, requestLocation, saveLocation } from "./engine/geolocation/geolocation";
 import { deriveSunLighting } from "./engine/scene-state/sunLighting";
 import { createRenderContext } from "./scene/renderer";
 import { createSceneRig } from "./scene/scene";
+import { createPermissionPrompt } from "./ui/permissionPrompt";
 
-// Provisional fixed location (Tokyo) — replaced by real Geolocation wiring next.
-const DEFAULT_LOCATION: GeoLocation = { lat: 35.6762, lng: 139.6503 };
+// Used until a real GPS fix lands (or forever, if the user denies it).
+const FALLBACK_LOCATION: GeoLocation = { lat: 35.6762, lng: 139.6503 }; // Tokyo
 
 const SUN_UPDATE_INTERVAL_SEC = 1;
 
 export function startApp(): void {
   const canvas = document.querySelector<HTMLCanvasElement>("#scene");
-  if (!canvas) return;
+  const appMount = document.querySelector<HTMLDivElement>("#app");
+  if (!canvas || !appMount) return;
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const ctx = createRenderContext(canvas);
   const rig = createSceneRig(ctx);
 
+  let currentLocation: GeoLocation = loadSavedLocation(localStorage) ?? FALLBACK_LOCATION;
+
   function updateSun(): void {
-    const sun = sunPosition(new Date(), DEFAULT_LOCATION);
+    const sun = sunPosition(new Date(), currentLocation);
     rig.applySunLighting(deriveSunLighting(sun));
   }
 
@@ -31,9 +37,27 @@ export function startApp(): void {
     ctx.render();
   }
 
+  // Render immediately with the fallback/saved location — the GPS fix (or
+  // its denial) resolves asynchronously below and never blocks first paint.
   updateSun();
   window.addEventListener("resize", renderFrame);
   renderFrame();
+
+  const prompt = createPermissionPrompt(appMount);
+  function tryGeolocate(): void {
+    void requestLocation(navigator.geolocation).then((loc) => {
+      if (loc) {
+        currentLocation = loc;
+        saveLocation(localStorage, loc);
+        prompt.hide();
+        updateSun();
+        renderFrame();
+      } else {
+        prompt.showDenied(tryGeolocate);
+      }
+    });
+  }
+  tryGeolocate();
 
   if (reducedMotion) return;
 

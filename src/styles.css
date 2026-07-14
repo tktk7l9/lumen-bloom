@@ -33,3 +33,35 @@ body {
 #app > * {
   pointer-events: auto;
 }
+
+.location-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: min(90vw, 28rem);
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(10, 12, 20, 0.72);
+  backdrop-filter: blur(6px);
+  color: #cbd3e6;
+  font: 0.8rem/1.4 system-ui, sans-serif;
+}
+
+.location-prompt button {
+  flex: none;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid rgba(203, 211, 230, 0.35);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.location-prompt button:hover {
+  background: rgba(203, 211, 230, 0.12);
+}

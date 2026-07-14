@@ -59,6 +59,27 @@ describe("deriveSceneState", () => {
     expect(envRatio).toBeGreaterThan(sunRatio);
   });
 
+  it("backdrop matches the mood's sky tint in full daylight", () => {
+    // Altitude 40° → environmentLevel 1.0; clear sky keeps the multiplier at 1.
+    const state = deriveSceneState(SUN, snapshot({ condition: "clear" }));
+    expect(state.backdropHex).toBe(state.mood.skyTintHex);
+  });
+
+  it("backdrop fades to near-black at night", () => {
+    const state = deriveSceneState(
+      { azimuth: 0, apparentAltitude: -30 },
+      snapshot({ condition: "clear" }),
+    );
+    // environmentLevel bottoms out at 0.06, so only a whisper of sky tint remains.
+    expect(state.backdropHex).toBeLessThan(0x141821);
+  });
+
+  it("backdrop is darker under a midday storm than a midday clear sky", () => {
+    const clear = deriveSceneState(SUN, snapshot({ condition: "clear" }));
+    const storm = deriveSceneState(SUN, snapshot({ condition: "storm" }));
+    expect(storm.backdropHex).toBeLessThan(clear.backdropHex);
+  });
+
   it("returns the exact mood conditionToMood would produce for that snapshot", () => {
     const weather = snapshot({ condition: "rain", precipitationMm: 3 });
     const state = deriveSceneState(SUN, weather);

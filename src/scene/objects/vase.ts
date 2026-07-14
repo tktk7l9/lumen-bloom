@@ -47,6 +47,11 @@ function createGlassMesh(outer: readonly ProfilePoint[], inner: readonly Profile
     envMapIntensity: 1.1,
     clearcoat: 0.5,
     clearcoatRoughness: 0.2,
+    // Without this the glass writes depth and the alpha-blended water inside
+    // it fails the depth test entirely — transmissive surfaces render before
+    // the transparent pass, so an interior water body is only compositable
+    // over the glass if the glass leaves the depth buffer alone.
+    depthWrite: false,
   });
 
   const mesh = new THREE.Mesh(new THREE.LatheGeometry(profile, 72), material);
@@ -55,30 +60,67 @@ function createGlassMesh(outer: readonly ProfilePoint[], inner: readonly Profile
   return mesh;
 }
 
-function createWaterMesh(inner: readonly ProfilePoint[], heightM: number): THREE.Mesh {
+function createWaterGroup(inner: readonly ProfilePoint[], heightM: number): THREE.Group {
   const waterProfile = offsetProfileInward(inner, 0.0015, 0.003);
   const topY = heightM * WATER_LEVEL_FRAC;
   const bottomY = WALL_M + 0.002;
+  const topR = radiusAtY(waterProfile, topY);
 
   const profile: THREE.Vector2[] = [new THREE.Vector2(AXIS_R * 0.8, bottomY)];
   for (const [r, y] of waterProfile) {
     if (y >= topY) break;
     if (y > bottomY) profile.push(new THREE.Vector2(r, y));
   }
-  profile.push(
-    new THREE.Vector2(radiusAtY(waterProfile, topY), topY),
-    new THREE.Vector2(AXIS_R * 0.8, topY),
+  profile.push(new THREE.Vector2(topR, topY), new THREE.Vector2(AXIS_R * 0.8, topY));
+
+  // Alpha-blended, NOT transmission: three.js's transmission pass renders a
+  // buffer of the rest of the scene for transmissive surfaces to refract,
+  // and a transmissive water body sitting entirely inside the transmissive
+  // glass wall barely shows up in it — the water reads as absent. Classic
+  // transparency is visible through the glass and tints the stems in it.
+  const body = new THREE.Mesh(
+    new THREE.LatheGeometry(profile, 56),
+    new THREE.MeshPhysicalMaterial({
+      color: 0x8fc3b0,
+      roughness: 0.12,
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+    }),
   );
 
-  const material = new THREE.MeshPhysicalMaterial({
-    color: 0xdcefe4,
-    roughness: 0.08,
-    transmission: 0.9,
-    thickness: 0.05,
-    ior: 1.33,
-  });
+  // What actually makes water read as water in a clear vase is the
+  // waterline: a glossier, lighter surface disc plus a bright meniscus
+  // ring where it meets the glass.
+  const surface = new THREE.Mesh(
+    new THREE.CircleGeometry(topR, 48),
+    new THREE.MeshPhysicalMaterial({
+      color: 0xcfe8de,
+      roughness: 0.05,
+      transparent: true,
+      opacity: 0.6,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+  );
+  surface.rotation.x = -Math.PI / 2;
+  surface.position.y = topY + 0.0005;
 
-  return new THREE.Mesh(new THREE.LatheGeometry(profile, 56), material);
+  const meniscus = new THREE.Mesh(
+    new THREE.TorusGeometry(topR, 0.0012, 6, 48),
+    new THREE.MeshStandardMaterial({
+      color: 0xe9f6f0,
+      roughness: 0.2,
+      transparent: true,
+      opacity: 0.85,
+    }),
+  );
+  meniscus.rotation.x = Math.PI / 2;
+  meniscus.position.y = topY + 0.0005;
+
+  const group = new THREE.Group();
+  group.add(body, surface, meniscus);
+  return group;
 }
 
 /** Hollow glass vase with visible wall thickness, part-filled with water. */
@@ -89,6 +131,6 @@ export function createVaseGroup(opts?: Partial<VaseProfileOptions>): THREE.Group
 
   const group = new THREE.Group();
   group.add(createGlassMesh(outer, inner));
-  group.add(createWaterMesh(inner, o.heightM));
+  group.add(createWaterGroup(inner, o.heightM));
   return group;
 }

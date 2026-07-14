@@ -68,6 +68,18 @@ describe("conditionToMood", () => {
     const clear = conditionToMood(snapshot({ condition: "clear" }));
     expect(storm.sunIntensityMultiplier).toBeLessThan(clear.sunIntensityMultiplier);
   });
+
+  it("gives every condition a sky tint, brightest for clear and darkest for storm", () => {
+    const conditions = ["clear", "cloudy", "fog", "rain", "snow", "storm"] as const;
+    const tints = conditions.map((c) => conditionToMood(snapshot({ condition: c })).skyTintHex);
+    for (const tint of tints) {
+      expect(tint).toBeGreaterThan(0);
+      expect(tint).toBeLessThanOrEqual(0xffffff);
+    }
+    const clear = tints[0];
+    const storm = tints[5];
+    expect(storm).toBeLessThan(clear);
+  });
 });
 
 describe("neutralMood", () => {

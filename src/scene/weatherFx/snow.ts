@@ -6,7 +6,7 @@ export function createSnowSystem(reducedMotion: boolean, count = 180): ParticleS
     count,
     volumeRadiusM: 1.0,
     volumeHeightM: 1.1,
-    baseY: -0.04,
+    baseY: 0,
     fallSpeedM: [0.12, 0.22],
     swayAmplitudeM: 0.05,
     swayFrequencyHz: 0.6,

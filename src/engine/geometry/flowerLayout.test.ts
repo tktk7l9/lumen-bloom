@@ -53,13 +53,13 @@ describe("layoutBouquet", () => {
     }
   });
 
-  it("gives each stem one or two leaves along the middle of the stem", () => {
+  it("gives each stem one or two leaves on the above-rim stretch of the curve", () => {
     const counts = new Set<number>();
     for (const seed of [1, 2, 3, 4, 5]) {
       for (const stem of layoutBouquet({ stemCount: 4, seed })) {
         counts.add(stem.leaves.length);
         for (const leaf of stem.leaves) {
-          expect(leaf.t).toBeGreaterThan(0.3);
+          expect(leaf.t).toBeGreaterThan(0.6);
           expect(leaf.t).toBeLessThan(0.9);
           expect(leaf.lengthM).toBeGreaterThan(0.06);
           expect(leaf.lengthM).toBeLessThan(0.11);
@@ -68,6 +68,15 @@ describe("layoutBouquet", () => {
     }
     // Across several seeds both branch outcomes (1 leaf and 2 leaves) occur.
     expect(counts).toEqual(new Set([1, 2]));
+  });
+
+  it("starts every stem at the vase floor, bunched inward from the neck", () => {
+    for (const stem of layoutBouquet({ seed: 6 })) {
+      const [bx, by, bz] = stem.controlPoints[0];
+      const [nx, , nz] = stem.controlPoints[1];
+      expect(by).toBe(DEFAULT_BOUQUET.vaseBottomYM);
+      expect(Math.hypot(bx, bz)).toBeLessThan(Math.hypot(nx, nz));
+    }
   });
 
   it("colorSeed stays within [0, 1)", () => {

@@ -18,6 +18,8 @@ export type WeatherFetchResult =
 export interface WeatherMood {
   /** Ambient/fog tint, as a plain hex number (scene layer converts to THREE.Color). */
   ambientTintHex: number;
+  /** Full-daylight backdrop/sky color for this condition; night fades it toward black. */
+  skyTintHex: number;
   fogDensityMultiplier: number;
   sunIntensityMultiplier: number;
   particle: "none" | "rain" | "snow";

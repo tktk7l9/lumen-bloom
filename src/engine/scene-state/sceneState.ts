@@ -1,12 +1,21 @@
 import type { SunPosition } from "../astro/solar";
 import { conditionToMood, neutralMood } from "../weather/mapping";
 import type { WeatherMood, WeatherSnapshot } from "../weather/types";
+import { lerpHex } from "./colorMix";
 import { deriveSunLighting, type SunLightingState } from "./sunLighting";
 
 export interface SceneState {
   sun: SunLightingState;
   mood: WeatherMood;
+  /**
+   * Backdrop/fog color: the mood's daylight sky tint faded toward near-black
+   * as the sun sets — so the whole frame's brightness tracks the real
+   * lighting at the viewer's location instead of floating in a fixed void.
+   */
+  backdropHex: number;
 }
+
+const NIGHT_BACKDROP = 0x03040a;
 
 /**
  * Combines the sun's sky position with the current weather into one scene
@@ -22,14 +31,16 @@ export function deriveSceneState(
 ): SceneState {
   const mood = weather ? conditionToMood(weather) : neutralMood();
   const baseSun = deriveSunLighting(sun);
+  // Overcast skies flatten the IBL too, but less than the direct sun — an
+  // overcast day is dimmer, not dark.
+  const environmentLevel = baseSun.environmentLevel * (0.55 + 0.45 * mood.sunIntensityMultiplier);
   return {
     sun: {
       ...baseSun,
       intensity: baseSun.intensity * mood.sunIntensityMultiplier,
-      // Overcast skies flatten the IBL too, but less than the direct sun —
-      // an overcast day is dimmer, not dark.
-      environmentLevel: baseSun.environmentLevel * (0.55 + 0.45 * mood.sunIntensityMultiplier),
+      environmentLevel,
     },
     mood,
+    backdropHex: lerpHex(NIGHT_BACKDROP, mood.skyTintHex, environmentLevel),
   };
 }

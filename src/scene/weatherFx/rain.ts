@@ -6,7 +6,7 @@ export function createRainSystem(reducedMotion: boolean, count = 260): ParticleS
     count,
     volumeRadiusM: 1.0,
     volumeHeightM: 1.1,
-    baseY: -0.04,
+    baseY: 0,
     fallSpeedM: [1.6, 2.4],
     swayAmplitudeM: 0,
     swayFrequencyHz: 0,

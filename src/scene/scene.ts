@@ -4,7 +4,7 @@ import type { WeatherMood } from "../engine/weather/types";
 import type { SceneState } from "../engine/scene-state/sceneState";
 import { applyProceduralEnvironment } from "./environment";
 import { createSunLightRig } from "./lighting/sunLight";
-import { createPedestal } from "./objects/pedestal";
+import { createGround } from "./objects/ground";
 import { getSceneObject } from "./objects/registry";
 import { VASE_OBJECT_ID } from "./objects/vaseFactory"; // also registers it as a side effect
 import type { RenderContext } from "./renderer";
@@ -19,7 +19,7 @@ export interface SceneRig {
 // that mood.fogDensityMultiplier scales from.
 const BASE_FOG_DENSITY = 0.5;
 
-/** Assembles the pedestal + centerpiece object under the real sun light rig + weather mood. */
+/** Assembles the ground + centerpiece object under the real sun light rig + weather mood. */
 export function createSceneRig(ctx: RenderContext, reducedMotion = false): SceneRig {
   applyProceduralEnvironment(ctx.renderer, ctx.scene);
 
@@ -29,7 +29,7 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
   const sunRig = createSunLightRig();
   ctx.scene.add(sunRig.light, sunRig.light.target);
 
-  ctx.scene.add(createPedestal());
+  ctx.scene.add(createGround());
 
   const factory = getSceneObject(VASE_OBJECT_ID);
   if (factory) ctx.scene.add(factory.create());
@@ -51,6 +51,10 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
       currentMood = state.mood;
       ctx.fog.density = BASE_FOG_DENSITY * state.mood.fogDensityMultiplier;
       ambient.color.setHex(state.mood.ambientTintHex);
+      // Backdrop + fog track the real-world brightness at the viewer's
+      // location: the mood's daylight sky tint faded toward black at night.
+      ctx.renderer.setClearColor(state.backdropHex, 1);
+      ctx.fog.color.setHex(state.backdropHex);
       // Apply particle visibility/intensity immediately: under reduced
       // motion, update(dtSec) above is never called on a timer, so without
       // this a mood change (e.g. clear → rain) would never actually show

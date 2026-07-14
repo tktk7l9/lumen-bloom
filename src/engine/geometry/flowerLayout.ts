@@ -33,6 +33,8 @@ export interface BouquetOptions {
   stemCount: number;
   vaseNeckRadiusM: number;
   vaseRimYM: number;
+  /** Where the stems bottom out inside the vase — under the waterline. */
+  vaseBottomYM: number;
   seed: number;
 }
 
@@ -40,6 +42,7 @@ export const DEFAULT_BOUQUET: BouquetOptions = {
   stemCount: 4,
   vaseNeckRadiusM: 0.05,
   vaseRimYM: 0.32,
+  vaseBottomYM: 0.04,
   // Chosen by comparing rendered compositions across seeds — one full-face
   // head toward the camera, two profiles, no clumping.
   seed: 5,
@@ -59,6 +62,10 @@ export function layoutBouquet(opts?: Partial<BouquetOptions>): StemLayout[] {
     const startX = Math.cos(az) * emergeR;
     const startZ = Math.sin(az) * emergeR;
     const startY = o.vaseRimYM - 0.05;
+
+    // Below the neck the stem continues down through the water to the vase
+    // floor, bunching slightly toward the center like a real cut bouquet.
+    const bottom: Point3 = [startX * 0.45, o.vaseBottomYM, startZ * 0.45];
 
     const riseM = 0.17 + rand() * 0.09;
     const leanDeg = 8 + rand() * 16; // always leans a little outward
@@ -87,18 +94,20 @@ export function layoutBouquet(opts?: Partial<BouquetOptions>): StemLayout[] {
       top[2] + headDirection[2] * neckM,
     ];
 
+    // Leaf t values sit on the full curve, whose lower ~55% now runs inside
+    // the vase — so leaves are confined to the above-rim stretch.
     const leafCount = 1 + (rand() < 0.6 ? 1 : 0);
     const leaves: LeafLayout[] = [];
     for (let j = 0; j < leafCount; j++) {
       leaves.push({
-        t: 0.38 + 0.28 * j + rand() * 0.08,
+        t: 0.64 + 0.16 * j + rand() * 0.05,
         azimuthDeg: azimuthDeg + (rand() - 0.5) * 160,
         lengthM: 0.07 + rand() * 0.035,
       });
     }
 
     stems.push({
-      controlPoints: [at(0, 0), at(0.4, 0.12), at(0.75, 0.5), top],
+      controlPoints: [bottom, at(0, 0), at(0.4, 0.12), at(0.75, 0.5), top],
       headPosition,
       headDirection,
       headRadiusM: 0.055 + rand() * 0.018,

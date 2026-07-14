@@ -1,5 +1,7 @@
 # Lumen Bloom — 太陽と天気を映す花瓶
 
+**[▶ 開く](https://lumen-bloom.vercel.app)**
+
 現在地の緯度経度から計算したリアルタイムの太陽・月の位置で部屋の隅に置かれた花瓶に窓越しの光と影を落とし、現在地の天気(晴れ/曇り/霧/雨/雪/雷雨)を空間の雰囲気に反映する、常時起動できる3Dウォールペーパー。
 
 ![Lumen Bloom](public/ogp.png)
@@ -49,6 +51,9 @@ npm run build       # 型チェック + 本番ビルド
 - Vercel Analytics
 - Open-Meteo API（天気、APIキー不要）
 
-## 品質指標
+## 品質指標（2026-07-14 計測）
 
-<!-- publish-check で Lighthouse / Observatory を計測して追記 -->
+- Lighthouse: **desktop 99/100/100/100・mobile 92/100/100/100**（常時3D描画のTBTは適応フレームレートで6.3s→280msに削減）
+- Mozilla Observatory: **A+（score 120・tests 10/10）**
+- テスト: **179**（`src/engine` 100%カバレッジゲート・CI強制）
+- npm audit: **0件** / gitleaks: **0件**

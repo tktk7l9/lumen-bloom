@@ -7,9 +7,10 @@ describe("arrangements catalog", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("every arrangement has a display name and a sane vase profile", () => {
+  it("every arrangement has a display name, a description, and a sane vase profile", () => {
     for (const a of ARRANGEMENTS) {
       expect(a.name.length).toBeGreaterThan(0);
+      expect(a.description.length).toBeGreaterThan(20);
       const profile = { ...DEFAULT_VASE_PROFILE, ...a.vase.profile };
       expect(profile.heightM).toBeGreaterThan(0.1);
       expect(profile.neckRadiusM).toBeGreaterThan(0);

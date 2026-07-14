@@ -25,6 +25,8 @@ export interface Arrangement {
   id: string;
   /** Display name for the HUD (Japanese flower name). */
   name: string;
+  /** A couple of sentences about the flower, shown in the info card. */
+  description: string;
   flora: {
     kind: FloraKind;
     /** Petal/leaf/berry colors, meaning depends on the kind. */
@@ -44,12 +46,16 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
   {
     id: "sunflower",
     name: "ひまわり",
+    description:
+      "夏を代表する一年草。若い花は太陽を追って東から西へ向きを変え、種の並びはフィボナッチ数の螺旋を描く。花言葉は「憧れ」。",
     flora: { kind: "sunflower", paletteHex: [], stemCount: 4, seed: 5 },
     vase: { profile: {}, style: { kind: "glass", colorHex: 0xf4fbf9 } },
   },
   {
     id: "tulip",
     name: "チューリップ",
+    description:
+      "春の球根花。昼は開き夜は閉じる就眠運動をし、切り花になっても水を吸って伸び続ける。花言葉は「思いやり」。",
     flora: {
       kind: "tulip",
       paletteHex: [0xd7443e, 0xe86fa4, 0xf2b93d, 0x9a5fc2],
@@ -64,6 +70,8 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
   {
     id: "cosmos",
     name: "コスモス",
+    description:
+      "漢字では「秋桜」。細い茎に軽やかな八弁の花を揺らす秋の野の花で、風に強くしなやか。花言葉は「調和」「乙女の真心」。",
     flora: {
       kind: "cosmos",
       paletteHex: [0xe973a8, 0xf5eef2, 0xc2447e],
@@ -78,6 +86,8 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
   {
     id: "peony",
     name: "芍薬",
+    description:
+      "「立てば芍薬、座れば牡丹」と美人の立ち姿に例えられる初夏の花。幾重にも重なる花弁が一輪でも豪華。花言葉は「はにかみ」。",
     flora: { kind: "peony", paletteHex: [0xe98cb1, 0xf3ece6], stemCount: 3, seed: 6 },
     vase: {
       profile: { heightM: 0.26, neckRadiusM: 0.055, bellyRadiusM: 0.095, baseRadiusM: 0.06 },
@@ -87,6 +97,8 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
   {
     id: "hydrangea",
     name: "紫陽花",
+    description:
+      "梅雨を彩る花。小さな花の集まりに見える部分は実は萼(がく)で、土の酸性度によって青にも赤紫にも色を変える。花言葉は「移り気」「辛抱強い愛情」。",
     flora: {
       kind: "hydrangea",
       paletteHex: [0x7d8fd1, 0x9a86c8, 0x6aa3d8],
@@ -101,6 +113,8 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
   {
     id: "ume",
     name: "梅",
+    description:
+      "厳寒の中、春に先駆けて香り高く咲く枝物。万葉集では桜より多く詠まれた花見の元祖。花言葉は「高潔」「忍耐」。",
     flora: {
       kind: "blossomBranch",
       paletteHex: [0xe86a8a, 0xf0d24a],
@@ -116,6 +130,8 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
   {
     id: "sakura",
     name: "桜",
+    description:
+      "日本の春の象徴。開花からわずか二週間ほどで散る儚さが古くから愛され、枝物として生けると室内でも小さな花見ができる。花言葉は「精神の美」。",
     flora: {
       kind: "blossomBranch",
       paletteHex: [0xf6cdd8, 0xe8b3c2],
@@ -131,6 +147,8 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
   {
     id: "momiji",
     name: "紅葉",
+    description:
+      "秋の彩りを室内に持ち込む枝物。気温が下がると葉の中の糖がアントシアニンに変わり、緑から赤や橙へ染まる。花言葉は「大切な思い出」。",
     flora: {
       kind: "leafBranch",
       paletteHex: [0xc7472e, 0xe08a2e, 0xd6b23a],
@@ -146,6 +164,8 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
   {
     id: "nanten",
     name: "南天",
+    description:
+      "「難を転ずる」に通じる縁起木として、正月飾りや鬼門に植えられてきた冬の実もの。艶やかな赤い実は雪景色によく映える。花言葉は「福をなす」。",
     flora: {
       kind: "berryBranch",
       paletteHex: [0xc22b2a, 0x4e6b30],

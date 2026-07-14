@@ -13,6 +13,8 @@ export interface UrlOverrides {
   objectId: string | null;
   /** `hud=1` forces the HUD on, `hud=0` off; null = user preference. */
   hud: boolean | null;
+  /** `info=1` forces the flower info card on, `info=0` off; null = user preference. */
+  info: boolean | null;
 }
 
 export function parseUrlOverrides(search: string, nowMs: number): UrlOverrides {
@@ -45,5 +47,8 @@ export function parseUrlOverrides(search: string, nowMs: number): UrlOverrides {
   const hud = params.get("hud");
   const hudFlag = hud === "1" ? true : hud === "0" ? false : null;
 
-  return { location, timeOffsetMs, objectId, hud: hudFlag };
+  const info = params.get("info");
+  const infoFlag = info === "1" ? true : info === "0" ? false : null;
+
+  return { location, timeOffsetMs, objectId, hud: hudFlag, info: infoFlag };
 }

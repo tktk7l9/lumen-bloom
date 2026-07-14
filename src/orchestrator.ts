@@ -19,6 +19,7 @@ import type { WeatherSnapshot } from "./engine/weather/types";
 import { createRenderContext } from "./scene/renderer";
 import { createSceneRig } from "./scene/scene";
 import { createHud } from "./ui/hud";
+import { createInfoCard } from "./ui/infoCard";
 import { createPermissionPrompt } from "./ui/permissionPrompt";
 import { setupWakeLock } from "./ui/wakeLock";
 
@@ -52,6 +53,7 @@ export function startApp(): void {
   // prompt's click handler is bound lazily — the heavy pieces it needs are
   // created right after.
   const hud = createHud(appMount, overrides.hud);
+  const infoCard = createInfoCard(appMount, overrides.info);
   let requestGeolocation: (() => void) | null = null;
   const wantsPrompt =
     overrides.location === null && loadSavedLocation(localStorage) === null;
@@ -80,6 +82,7 @@ export function startApp(): void {
       currentArrangementId = arrangement.id;
       rig.setArrangement(arrangement);
     }
+    infoCard.render(arrangement.name, arrangement.description);
 
     const sun = sunPosition(date, currentLocation);
     const phase = moonPhase(date);

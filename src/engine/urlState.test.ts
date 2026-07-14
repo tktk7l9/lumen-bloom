@@ -9,6 +9,7 @@ describe("parseUrlOverrides", () => {
       timeOffsetMs: null,
       objectId: null,
       hud: null,
+      info: null,
     });
   });
 
@@ -45,5 +46,11 @@ describe("parseUrlOverrides", () => {
     expect(parseUrlOverrides("?hud=0", NOW).hud).toBe(false);
     expect(parseUrlOverrides("?hud=2", NOW).hud).toBeNull();
     expect(parseUrlOverrides("", NOW).hud).toBeNull();
+  });
+
+  it("parses the info flag tri-state", () => {
+    expect(parseUrlOverrides("?info=1", NOW).info).toBe(true);
+    expect(parseUrlOverrides("?info=0", NOW).info).toBe(false);
+    expect(parseUrlOverrides("?info=x", NOW).info).toBeNull();
   });
 });

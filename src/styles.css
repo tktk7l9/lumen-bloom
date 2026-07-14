@@ -95,6 +95,49 @@ body {
   display: none;
 }
 
+/* This week's flower, described. Sits above the HUD in the same corner. */
+.info-card {
+  position: absolute;
+  right: 1.1rem;
+  bottom: 3.4rem;
+  max-width: 19rem;
+  padding: 0.75rem 2.1rem 0.8rem 0.95rem;
+  border-radius: 12px;
+  background: rgba(10, 12, 20, 0.55);
+  backdrop-filter: blur(6px);
+  color: #b6bfd3;
+  font: 0.76rem/1.55 system-ui, sans-serif;
+}
+
+.info-card[hidden] {
+  display: none;
+}
+
+.info-card .title {
+  margin-bottom: 0.25rem;
+  color: #dde3f0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.info-card .close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.45rem;
+  padding: 0.2rem 0.4rem;
+  border: none;
+  background: transparent;
+  color: #8a93aa;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.info-card .close:hover {
+  color: #dde3f0;
+}
+
 /* Static wordmark: paints with the first CSS frame, giving the page a
    text LCP long before the 3D scene's first render. */
 .wordmark {

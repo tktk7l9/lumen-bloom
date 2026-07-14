@@ -17,9 +17,9 @@ export interface SceneRig {
   applySceneState(state: SceneState): void;
   /**
    * Whether the scene currently benefits from a high frame rate — particles
-   * falling, lightning armed, or a lighting transition in flight. Everything
-   * else (breeze, the slowly drifting sun) reads fine at a low frame rate,
-   * which is what an always-on wallpaper should idle at.
+   * falling or lightning armed. Everything else (breeze, lighting fades,
+   * the slowly drifting sun) reads fine at a low frame rate, which is what
+   * an always-on wallpaper should idle at.
    */
   wantsHighFps(): boolean;
 }
@@ -174,21 +174,13 @@ export function createSceneRig(
     }
   }
 
-  function transitionActive(): boolean {
-    if (!current || !target) return false;
-    return (
-      Math.abs(current.sunIntensity - target.sunIntensity) > 0.01 ||
-      Math.abs(current.moonIntensity - target.moonIntensity) > 0.005 ||
-      Math.abs(current.ambientLevel - target.ambientLevel) > 0.005 ||
-      Math.abs(current.environmentLevel - target.environmentLevel) > 0.005 ||
-      Math.abs(current.fogDensity - target.fogDensity) > 0.005 ||
-      Math.abs(current.glassRoughness - target.glassRoughness) > 0.01
-    );
-  }
-
   return {
     wantsHighFps(): boolean {
-      return currentMood.particle !== "none" || currentMood.lightning || transitionActive();
+      // Lighting transitions deliberately don't count: they're slow
+      // luminance/color ramps, perfectly smooth at the 10fps base rate.
+      // Only spatial motion (falling particles, lightning flicker) earns
+      // the 30fps budget.
+      return currentMood.particle !== "none" || currentMood.lightning;
     },
     update(dtSec: number): void {
       elapsedSec += dtSec;

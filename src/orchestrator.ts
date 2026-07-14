@@ -45,9 +45,20 @@ export function startApp(): void {
   const now = (): Date => new Date(Date.now() + (overrides.timeOffsetMs ?? 0));
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Cheap DOM (HUD, location prompt) goes up before the expensive 3D init so
+  // the page has real text content seconds earlier on slow devices. The
+  // prompt's click handler is bound lazily — the heavy pieces it needs are
+  // created right after.
+  const hud = createHud(appMount, overrides.hud);
+  let requestGeolocation: (() => void) | null = null;
+  const wantsPrompt =
+    overrides.location === null && loadSavedLocation(localStorage) === null;
+  const prompt = wantsPrompt ? createPermissionPrompt(appMount) : null;
+  prompt?.show(() => requestGeolocation?.());
+
   const ctx = createRenderContext(canvas);
   const rig = createSceneRig(ctx, reducedMotion, overrides.objectId);
-  const hud = createHud(appMount, overrides.hud);
   setupWakeLock();
 
   let currentLocation: GeoLocation =
@@ -97,24 +108,20 @@ export function startApp(): void {
   // gesture): auto-requesting on load annoys first-time visitors and trips
   // Chrome's no-gesture violation. Returning users ride the saved fix, and
   // a URL-pinned location wins over everything — no GPS, no prompt.
-  if (overrides.location === null && loadSavedLocation(localStorage) === null) {
-    const prompt = createPermissionPrompt(appMount);
-    const tryGeolocate = (): void => {
-      void requestLocation(navigator.geolocation).then((loc) => {
-        if (loc) {
-          currentLocation = loc;
-          saveLocation(localStorage, loc);
-          prompt.hide();
-          applyScene();
-          renderFrame();
-          void refreshWeather(); // the previous fetch (if any) was for the old location
-        } else {
-          prompt.show(tryGeolocate);
-        }
-      });
-    };
-    prompt.show(tryGeolocate);
-  }
+  requestGeolocation = (): void => {
+    void requestLocation(navigator.geolocation).then((loc) => {
+      if (loc) {
+        currentLocation = loc;
+        saveLocation(localStorage, loc);
+        prompt?.hide();
+        applyScene();
+        renderFrame();
+        void refreshWeather(); // the previous fetch (if any) was for the old location
+      } else {
+        prompt?.show(() => requestGeolocation?.());
+      }
+    });
+  };
 
   // --- Periodic updates, paused while the tab/window is hidden (battery/CPU) ---
   let rafId: number | null = null;

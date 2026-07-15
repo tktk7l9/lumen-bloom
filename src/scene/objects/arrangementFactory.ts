@@ -37,6 +37,7 @@ export function createArrangement(a: Arrangement): THREE.Group {
     seed: a.flora.seed,
     vaseRimYM: profile.heightM,
     vaseNeckRadiusM: profile.neckRadiusM,
+    vaseBaseRadiusM: profile.baseRadiusM,
   };
 
   let flora: THREE.Group;
@@ -110,6 +111,7 @@ export function createArrangement(a: Arrangement): THREE.Group {
         },
         vaseRimYM: profile.heightM,
         vaseNeckRadiusM: profile.neckRadiusM,
+        vaseBaseRadiusM: profile.baseRadiusM,
       });
       break;
     case "leafBranch":
@@ -120,6 +122,7 @@ export function createArrangement(a: Arrangement): THREE.Group {
         adorn: { type: "leaf", leafHexes: a.flora.paletteHex },
         vaseRimYM: profile.heightM,
         vaseNeckRadiusM: profile.neckRadiusM,
+        vaseBaseRadiusM: profile.baseRadiusM,
       });
       break;
     case "berryBranch":
@@ -134,6 +137,7 @@ export function createArrangement(a: Arrangement): THREE.Group {
         },
         vaseRimYM: profile.heightM,
         vaseNeckRadiusM: profile.neckRadiusM,
+        vaseBaseRadiusM: profile.baseRadiusM,
       });
       break;
   }

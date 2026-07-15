@@ -1,13 +1,17 @@
-// Sunflower bouquet layout — a decorative, not physical, arrangement.
-// Deterministic per seed so a render is reproducible, and Three.js-
-// independent so it can be tested without a WebGL context.
+// Bouquet layout with vase statics: each cut stem is a lever resting
+// against the vase — its foot pushes on the inside of the base on one side,
+// it pivots on the rim edge on the opposite side, and above the rim it
+// arcs outward and down under the head's weight. The maximum lean falls
+// out of the vessel's real geometry (neck radius, base radius, depth), so
+// stems in a slim bottle stand taller than stems in a wide-mouthed jar.
+// Deterministic per seed and Three.js-independent for testability.
 
 import { mulberry32 } from "./prng";
 
 export type Point3 = readonly [x: number, y: number, z: number];
 
 export interface LeafLayout {
-  /** Position along the stem curve, 0 (vase) .. 1 (head). */
+  /** Position along the stem curve, 0 (vase floor) .. 1 (head). */
   t: number;
   /** Direction the leaf points, compass-style around the stem. */
   azimuthDeg: number;
@@ -15,7 +19,10 @@ export interface LeafLayout {
 }
 
 export interface StemLayout {
-  /** Curve control points from inside the vase neck up to the head attachment. */
+  /**
+   * Curve control points: foot (against the far base wall) → rim contact →
+   * three points arcing up and outward above the rim.
+   */
   controlPoints: readonly Point3[];
   headPosition: Point3;
   /** Unit vector the flower face points toward (outward, nodding slightly). */
@@ -35,6 +42,8 @@ export interface BouquetOptions {
   vaseRimYM: number;
   /** Where the stems bottom out inside the vase — under the waterline. */
   vaseBottomYM: number;
+  /** Interior base radius — where a leaning stem's foot comes to rest. */
+  vaseBaseRadiusM: number;
   seed: number;
 }
 
@@ -43,12 +52,11 @@ export const DEFAULT_BOUQUET: BouquetOptions = {
   vaseNeckRadiusM: 0.05,
   vaseRimYM: 0.32,
   vaseBottomYM: 0.04,
-  // Chosen by comparing rendered compositions across seeds — one full-face
-  // head toward the camera, two profiles, no clumping.
+  vaseBaseRadiusM: 0.055,
   seed: 5,
 };
 
-/** Layout a bouquet of sunflower stems emerging from the vase neck, seeded for repeatability. */
+/** Layout a bouquet of stems leaning on the vase rim, seeded for repeatability. */
 export function layoutBouquet(opts?: Partial<BouquetOptions>): StemLayout[] {
   const o: BouquetOptions = { ...DEFAULT_BOUQUET, ...opts };
   const rand = mulberry32(o.seed);
@@ -56,58 +64,68 @@ export function layoutBouquet(opts?: Partial<BouquetOptions>): StemLayout[] {
   const stems: StemLayout[] = [];
 
   for (let i = 0; i < n; i++) {
-    const azimuthDeg = (i / n) * 360 + (rand() - 0.5) * (360 / n) * 0.6;
+    // Wide jitter on purpose — real arrangements cluster and gap, they
+    // don't space themselves evenly around the compass.
+    const azimuthDeg = (i / n) * 360 + (rand() - 0.5) * (360 / n) * 1.2;
     const az = (azimuthDeg * Math.PI) / 180;
-    const emergeR = o.vaseNeckRadiusM * (0.2 + rand() * 0.4);
-    const startX = Math.cos(az) * emergeR;
-    const startZ = Math.sin(az) * emergeR;
-    const startY = o.vaseRimYM - 0.05;
+    const cos = Math.cos(az);
+    const sin = Math.sin(az);
 
-    // Below the neck the stem continues down through the water to the vase
-    // floor, bunching slightly toward the center like a real cut bouquet.
-    const bottom: Point3 = [startX * 0.45, o.vaseBottomYM, startZ * 0.45];
+    // Statics inside the vessel: the foot rests against the base interior
+    // on the FAR side of the lean, the stem crosses the opening and pivots
+    // on the near rim edge. The resulting in-vase lean angle is whatever
+    // that geometry dictates.
+    const footR = o.vaseBaseRadiusM * 0.6 * (0.4 + rand() * 0.6);
+    const rimR = o.vaseNeckRadiusM * (0.82 + rand() * 0.1);
+    const foot: Point3 = [-cos * footR, o.vaseBottomYM, -sin * footR];
+    const rimY = o.vaseRimYM - 0.006;
+    const rim: Point3 = [cos * rimR, rimY, sin * rimR];
+    const drop = rimY - o.vaseBottomYM;
+    const leanRad = Math.atan2(rimR + footR, drop);
 
-    const riseM = 0.17 + rand() * 0.09;
-    const leanDeg = 8 + rand() * 16; // always leans a little outward
-    const outwardM = Math.sin((leanDeg * Math.PI) / 180) * riseM;
-
-    const at = (upFrac: number, outFrac: number): Point3 => [
-      startX + Math.cos(az) * outwardM * outFrac,
-      startY + riseM * upFrac,
-      startZ + Math.sin(az) * outwardM * outFrac,
+    // Above the rim the stem continues at the pivot angle, then bows
+    // further outward-and-down under the head — long stems droop hard,
+    // short ones barely clear the rim and rest against it.
+    const freeLenM = 0.09 + rand() * 0.17;
+    const droopRad = (0.25 + rand() * 0.6) * Math.min(1, freeLenM / 0.18);
+    const seg = freeLenM / 3;
+    const point = (prev: Point3, phi: number): Point3 => [
+      prev[0] + Math.sin(phi) * cos * seg,
+      prev[1] + Math.cos(phi) * seg,
+      prev[2] + Math.sin(phi) * sin * seg,
     ];
+    const p1 = point(rim, leanRad + droopRad * 0.3);
+    const p2 = point(p1, leanRad + droopRad * 0.65);
+    const tip = point(p2, leanRad + droopRad);
 
-    // Cut sunflowers nod: faces point outward and mostly a touch downward.
-    const elevationDeg = -22 + rand() * 30;
+    // Faces follow the lean's azimuth, nodding a touch up or down from it.
+    const elevationDeg = -25 + rand() * 30;
     const el = (elevationDeg * Math.PI) / 180;
-    const headDirection: Point3 = [
-      Math.cos(el) * Math.cos(az),
-      Math.sin(el),
-      Math.cos(el) * Math.sin(az),
-    ];
+    const headDirection: Point3 = [Math.cos(el) * cos, Math.sin(el), Math.cos(el) * sin];
 
-    const top = at(1, 1);
     const neckM = 0.012; // head center sits just forward of the stem tip
     const headPosition: Point3 = [
-      top[0] + headDirection[0] * neckM,
-      top[1] + headDirection[1] * neckM,
-      top[2] + headDirection[2] * neckM,
+      tip[0] + headDirection[0] * neckM,
+      tip[1] + headDirection[1] * neckM,
+      tip[2] + headDirection[2] * neckM,
     ];
 
-    // Leaf t values sit on the full curve, whose lower ~55% now runs inside
-    // the vase — so leaves are confined to the above-rim stretch.
+    // Leaves live on the above-rim stretch; where that starts on the curve
+    // depends on this stem's in-vase vs free length.
+    const inVaseLen = Math.hypot(rimR + footR, drop);
+    const rimT = inVaseLen / (inVaseLen + freeLenM);
     const leafCount = 1 + (rand() < 0.6 ? 1 : 0);
     const leaves: LeafLayout[] = [];
     for (let j = 0; j < leafCount; j++) {
       leaves.push({
-        t: 0.64 + 0.16 * j + rand() * 0.05,
+        t: rimT + (0.2 + 0.35 * j + rand() * 0.1) * (1 - rimT),
         azimuthDeg: azimuthDeg + (rand() - 0.5) * 160,
         lengthM: 0.07 + rand() * 0.035,
       });
     }
 
     stems.push({
-      controlPoints: [bottom, at(0, 0), at(0.4, 0.12), at(0.75, 0.5), top],
+      controlPoints: [foot, rim, p1, p2, tip],
       headPosition,
       headDirection,
       headRadiusM: 0.055 + rand() * 0.018,

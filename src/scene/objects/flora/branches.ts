@@ -17,6 +17,7 @@ export interface BranchOptions {
   adorn: BranchAdornment;
   vaseRimYM: number;
   vaseNeckRadiusM: number;
+  vaseBaseRadiusM: number;
 }
 
 interface AdornSpot {
@@ -96,30 +97,36 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
 
   for (let b = 0; b < Math.max(1, opts.branchCount); b++) {
     const stemGroup = new THREE.Group();
-    const az = ((b / opts.branchCount) * 360 + (rand() - 0.5) * 40) * (Math.PI / 180);
-    const emergeR = opts.vaseNeckRadiusM * (0.25 + rand() * 0.35);
+    const az = ((b / opts.branchCount) * 360 + (rand() - 0.5) * 70) * (Math.PI / 180);
     const cos = Math.cos(az);
     const sin = Math.sin(az);
 
+    // Vase statics: the cut end rests against the base interior on the far
+    // side of the lean, the branch pivots on the near rim edge, and rises
+    // stiffly at that pivot angle (branches barely droop, unlike stems).
+    const footR = opts.vaseBaseRadiusM * 0.6 * (0.4 + rand() * 0.6);
+    const rimR = opts.vaseNeckRadiusM * (0.82 + rand() * 0.1);
+    const rimY = opts.vaseRimYM - 0.008;
+    const leanRad = Math.atan2(rimR + footR, rimY - 0.045);
+    const out = Math.sin(leanRad);
+    const up = Math.cos(leanRad);
+
     const riseM = 0.26 + rand() * 0.12;
-    const leanM = Math.sin(((10 + rand() * 14) * Math.PI) / 180) * riseM;
     const wiggle = (rand() - 0.5) * 0.05;
-    const baseY = opts.vaseRimYM - 0.03;
+
+    const along = (dist: number, w: number): THREE.Vector3 =>
+      new THREE.Vector3(
+        cos * (rimR + out * dist) - sin * w,
+        rimY + up * dist,
+        sin * (rimR + out * dist) + cos * w,
+      );
 
     const main = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(cos * emergeR * 0.4, 0.04, sin * emergeR * 0.4),
-      new THREE.Vector3(cos * emergeR, baseY, sin * emergeR),
-      new THREE.Vector3(
-        cos * (emergeR + leanM * 0.25) - sin * wiggle,
-        baseY + riseM * 0.4,
-        sin * (emergeR + leanM * 0.25) + cos * wiggle,
-      ),
-      new THREE.Vector3(
-        cos * (emergeR + leanM * 0.65) + sin * wiggle,
-        baseY + riseM * 0.75,
-        sin * (emergeR + leanM * 0.65) - cos * wiggle,
-      ),
-      new THREE.Vector3(cos * (emergeR + leanM), baseY + riseM, sin * (emergeR + leanM)),
+      new THREE.Vector3(-cos * footR, 0.045, -sin * footR),
+      new THREE.Vector3(cos * rimR, rimY, sin * rimR),
+      along(riseM * 0.4, wiggle),
+      along(riseM * 0.75, -wiggle),
+      along(riseM, wiggle * 0.4),
     ]);
     const mainMesh = new THREE.Mesh(new THREE.TubeGeometry(main, 24, 0.0038, 7, false), barkMaterial);
     mainMesh.castShadow = true;

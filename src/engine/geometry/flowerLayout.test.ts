@@ -14,26 +14,73 @@ describe("layoutBouquet", () => {
     expect(layoutBouquet({ stemCount: 0 })).toHaveLength(1);
   });
 
-  it("puts every head above the vase rim by a plausible amount", () => {
+  it("rests every foot against the base interior on the FAR side of the lean", () => {
+    for (const stem of layoutBouquet({ stemCount: 6, seed: 9 })) {
+      const [fx, fy, fz] = stem.controlPoints[0];
+      const [rx, , rz] = stem.controlPoints[1];
+      // Foot and rim contact sit on opposite sides of the vase axis…
+      expect(fx * rx + fz * rz).toBeLessThan(0);
+      // …and the foot stays inside the base.
+      expect(Math.hypot(fx, fz)).toBeLessThanOrEqual(DEFAULT_BOUQUET.vaseBaseRadiusM);
+      expect(fy).toBe(DEFAULT_BOUQUET.vaseBottomYM);
+    }
+  });
+
+  it("pivots on the rim edge: contact point at rim height near the neck radius", () => {
+    for (const stem of layoutBouquet({ stemCount: 6, seed: 3 })) {
+      const [rx, ry, rz] = stem.controlPoints[1];
+      expect(ry).toBeCloseTo(DEFAULT_BOUQUET.vaseRimYM - 0.006, 9);
+      const r = Math.hypot(rx, rz);
+      expect(r).toBeGreaterThan(DEFAULT_BOUQUET.vaseNeckRadiusM * 0.8);
+      expect(r).toBeLessThanOrEqual(DEFAULT_BOUQUET.vaseNeckRadiusM * 0.93);
+    }
+  });
+
+  it("leans outward above the rim: the tip sits farther from the axis than the rim contact", () => {
+    for (const stem of layoutBouquet({ stemCount: 6, seed: 7 })) {
+      const [rx, , rz] = stem.controlPoints[1];
+      const tip = stem.controlPoints[stem.controlPoints.length - 1];
+      expect(Math.hypot(tip[0], tip[2])).toBeGreaterThan(Math.hypot(rx, rz));
+    }
+  });
+
+  it("droops progressively: each free segment is less vertical than the last", () => {
+    for (const stem of layoutBouquet({ stemCount: 6, seed: 11 })) {
+      const [, rim, p1, p2, tip] = stem.controlPoints;
+      const rise = (a: readonly number[], b: readonly number[]): number => {
+        const dy = b[1] - a[1];
+        const dh = Math.hypot(b[0] - a[0], b[2] - a[2]);
+        return dy / dh; // higher = more vertical
+      };
+      expect(rise(rim, p1)).toBeGreaterThan(rise(p1, p2));
+      expect(rise(p1, p2)).toBeGreaterThan(rise(p2, tip));
+    }
+  });
+
+  it("keeps every head above the rim at a plausible height", () => {
     const rimY = DEFAULT_BOUQUET.vaseRimYM;
     for (const stem of layoutBouquet({ seed: 9 })) {
       const [, headY] = stem.headPosition;
-      expect(headY).toBeGreaterThan(rimY + 0.08);
+      expect(headY).toBeGreaterThan(rimY + 0.01);
       expect(headY).toBeLessThan(rimY + 0.3);
     }
   });
 
-  it("returns unit-length head directions pointing outward from the stem's azimuth", () => {
+  it("varies stem length enough that some heads hug the rim and some ride high", () => {
+    const heights = layoutBouquet({ stemCount: 8, seed: 5 }).map(
+      (s) => s.headPosition[1] - DEFAULT_BOUQUET.vaseRimYM,
+    );
+    expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThan(0.05);
+  });
+
+  it("returns unit-length head directions pointing outward along the lean", () => {
     for (const stem of layoutBouquet({ stemCount: 6, seed: 3 })) {
       const [dx, dy, dz] = stem.headDirection;
       expect(Math.hypot(dx, dy, dz)).toBeCloseTo(1, 9);
-      // Nod range: −22°..+8° of elevation.
-      expect(dy).toBeGreaterThan(Math.sin((-22 * Math.PI) / 180) - 1e-9);
-      expect(dy).toBeLessThan(Math.sin((8 * Math.PI) / 180) + 1e-9);
-      // Horizontal component matches the stem's outward azimuth.
-      const [sx, , sz] = stem.controlPoints[0];
-      const dot = dx * sx + dz * sz;
-      expect(dot).toBeGreaterThan(0);
+      expect(dy).toBeGreaterThan(Math.sin((-25 * Math.PI) / 180) - 1e-9);
+      expect(dy).toBeLessThan(Math.sin((5 * Math.PI) / 180) + 1e-9);
+      const [rx, , rz] = stem.controlPoints[1];
+      expect(dx * rx + dz * rz).toBeGreaterThan(0);
     }
   });
 
@@ -46,7 +93,7 @@ describe("layoutBouquet", () => {
     }
   });
 
-  it("keeps head radius in a plausible cut-sunflower range", () => {
+  it("keeps head radius in a plausible cut-flower range", () => {
     for (const stem of layoutBouquet({ stemCount: 6, seed: 7 })) {
       expect(stem.headRadiusM).toBeGreaterThanOrEqual(0.055);
       expect(stem.headRadiusM).toBeLessThanOrEqual(0.073);
@@ -59,8 +106,10 @@ describe("layoutBouquet", () => {
       for (const stem of layoutBouquet({ stemCount: 4, seed })) {
         counts.add(stem.leaves.length);
         for (const leaf of stem.leaves) {
-          expect(leaf.t).toBeGreaterThan(0.6);
-          expect(leaf.t).toBeLessThan(0.9);
+          // The rim sits at 0.5-0.8 of the curve depending on stem length;
+          // leaves always land past it and before the head.
+          expect(leaf.t).toBeGreaterThan(0.5);
+          expect(leaf.t).toBeLessThan(1);
           expect(leaf.lengthM).toBeGreaterThan(0.06);
           expect(leaf.lengthM).toBeLessThan(0.11);
         }
@@ -70,15 +119,6 @@ describe("layoutBouquet", () => {
     expect(counts).toEqual(new Set([1, 2]));
   });
 
-  it("starts every stem at the vase floor, bunched inward from the neck", () => {
-    for (const stem of layoutBouquet({ seed: 6 })) {
-      const [bx, by, bz] = stem.controlPoints[0];
-      const [nx, , nz] = stem.controlPoints[1];
-      expect(by).toBe(DEFAULT_BOUQUET.vaseBottomYM);
-      expect(Math.hypot(bx, bz)).toBeLessThan(Math.hypot(nx, nz));
-    }
-  });
-
   it("colorSeed stays within [0, 1)", () => {
     for (const stem of layoutBouquet({ stemCount: 8, seed: 11 })) {
       expect(stem.colorSeed).toBeGreaterThanOrEqual(0);
@@ -86,19 +126,14 @@ describe("layoutBouquet", () => {
     }
   });
 
-  it("spreads stems roughly evenly around the neck instead of clustering", () => {
-    const stems = layoutBouquet({ stemCount: DEFAULT_BOUQUET.stemCount, seed: 2 });
-    const angles = stems.map(({ controlPoints }) => {
-      const [x, , z] = controlPoints[0];
-      return (Math.atan2(z, x) * 180) / Math.PI;
-    });
-    const expectedStepDeg = 360 / stems.length;
-    for (let i = 1; i < angles.length; i++) {
-      let delta = Math.abs(angles[i] - angles[i - 1]);
-      if (delta > 180) delta = 360 - delta;
-      // Jitter is ±30% of the step, so consecutive stems stay well separated.
-      expect(delta).toBeGreaterThan(expectedStepDeg * 0.35);
-    }
+  it("a slimmer vessel yields more upright in-vase lean angles", () => {
+    const leanOf = (neck: number, base: number): number => {
+      const stem = layoutBouquet({ seed: 4, stemCount: 1, vaseNeckRadiusM: neck, vaseBaseRadiusM: base })[0];
+      const [fx, fy, fz] = stem.controlPoints[0];
+      const [rx, ry, rz] = stem.controlPoints[1];
+      return Math.atan2(Math.hypot(rx - fx, rz - fz), ry - fy);
+    };
+    expect(leanOf(0.03, 0.035)).toBeLessThan(leanOf(0.06, 0.07));
   });
 
   it("merges partial options with the defaults", () => {

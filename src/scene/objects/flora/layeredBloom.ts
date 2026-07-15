@@ -91,6 +91,33 @@ const STYLES = {
     upBias: 0.75,
     stemRadiusM: 0.0035,
   },
+  rose: {
+    petal: { widthM: 0.55, cupM: 0.3, bendM: -0.12 },
+    rings: [
+      { count: 8, radius: 0.42, y: 0, tilt: 30, len: 0.85, shade: 1.0 },
+      { count: 7, radius: 0.32, y: 0.012, tilt: 48, len: 0.72, shade: 0.94 },
+      { count: 6, radius: 0.22, y: 0.024, tilt: 62, len: 0.58, shade: 0.88 },
+      { count: 5, radius: 0.13, y: 0.034, tilt: 76, len: 0.45, shade: 0.82 },
+    ],
+    headScale: 0.45,
+    stamens: false,
+    upBias: 0.55,
+    stemRadiusM: 0.004,
+  },
+  ranunculus: {
+    petal: { widthM: 0.6, cupM: 0.22, bendM: -0.04 },
+    rings: [
+      { count: 11, radius: 0.46, y: 0, tilt: 14, len: 1.0, shade: 1.0 },
+      { count: 10, radius: 0.38, y: 0.01, tilt: 30, len: 0.85, shade: 0.96 },
+      { count: 9, radius: 0.29, y: 0.02, tilt: 46, len: 0.7, shade: 0.92 },
+      { count: 7, radius: 0.2, y: 0.03, tilt: 62, len: 0.56, shade: 0.88 },
+      { count: 5, radius: 0.11, y: 0.038, tilt: 76, len: 0.42, shade: 0.84 },
+    ],
+    headScale: 0.4,
+    stamens: false,
+    upBias: 0.7,
+    stemRadiusM: 0.0035,
+  },
 } satisfies Record<string, BloomStyle>;
 
 function createGroup(opts: LayeredBloomOptions, style: BloomStyle): THREE.Group {
@@ -199,3 +226,6 @@ export const createDahliaGroup = (o: LayeredBloomOptions): THREE.Group => create
 export const createMumGroup = (o: LayeredBloomOptions): THREE.Group => createGroup(o, STYLES.mum);
 export const createCarnationGroup = (o: LayeredBloomOptions): THREE.Group =>
   createGroup(o, STYLES.carnation);
+export const createRoseGroup = (o: LayeredBloomOptions): THREE.Group => createGroup(o, STYLES.rose);
+export const createRanunculusGroup = (o: LayeredBloomOptions): THREE.Group =>
+  createGroup(o, STYLES.ranunculus);

@@ -9,21 +9,29 @@ export type FloraKind =
   | "sunflower"
   | "tulip"
   | "cosmos"
+  | "anemone"
+  | "gerbera"
+  | "margaret"
   | "peony"
   | "dahlia"
   | "mum"
   | "carnation"
+  | "rose"
+  | "ranunculus"
   | "hydrangea"
   | "narcissus"
   | "lily"
   | "lavender"
+  | "kasumisou"
+  | "rindou"
+  | "calla"
   | "blossomBranch"
   | "leafBranch"
   | "berryBranch";
 
 export interface VaseStyle {
-  kind: "glass" | "ceramic";
-  /** Glass tint or ceramic body color. */
+  kind: "glass" | "ceramic" | "metal";
+  /** Glass tint, ceramic body color, or metal color. */
   colorHex: number;
 }
 
@@ -314,21 +322,149 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
       style: { kind: "ceramic", colorHex: 0xafc9ba },
     },
   },
+  {
+    id: "rose",
+    name: "バラ",
+    description:
+      "愛と美の象徴として最も贈られてきた花。贈る本数によって意味が変わり、1本は「一目惚れ」、12本は「私と付き合ってください」。花言葉は「愛」「美」。",
+    flora: {
+      kind: "rose",
+      paletteHex: [0xc22b45, 0xf2e8e0],
+      stemCount: 4,
+      seed: 21,
+    },
+    vase: {
+      profile: { heightM: 0.28, neckRadiusM: 0.052, bellyRadiusM: 0.078, baseRadiusM: 0.056 },
+      style: { kind: "glass", colorHex: 0x3f5fae },
+    },
+  },
+  {
+    id: "ranunculus",
+    name: "ラナンキュラス",
+    description:
+      "薄紙のような花弁が幾重にも重なる春の花。咲き進むほどふんわりと開き、一輪でも豪華な表情に。名前はラテン語の「小さなカエル」から。花言葉は「とても魅力的」。",
+    flora: {
+      kind: "ranunculus",
+      paletteHex: [0xe8875f, 0xf2e3cf, 0xb06fc2],
+      stemCount: 4,
+      seed: 22,
+    },
+    vase: {
+      profile: { heightM: 0.24, neckRadiusM: 0.052, bellyRadiusM: 0.08, baseRadiusM: 0.06 },
+      style: { kind: "ceramic", colorHex: 0xf0e9dc },
+    },
+  },
+  {
+    id: "anemone",
+    name: "アネモネ",
+    description:
+      "名前はギリシャ語の「風(anemos)」から来た「風の花」。ビロードのような黒い花芯と鮮やかな花弁のコントラストが早春の主役。花言葉は「はかない恋」「期待」。",
+    flora: {
+      kind: "anemone",
+      paletteHex: [0xc23b52, 0xf2ede8, 0x7a5fc2],
+      stemCount: 5,
+      seed: 23,
+    },
+    vase: {
+      profile: { heightM: 0.27, neckRadiusM: 0.046, bellyRadiusM: 0.06, baseRadiusM: 0.052 },
+      style: { kind: "glass", colorHex: 0xaab3bf },
+    },
+  },
+  {
+    id: "gerbera",
+    name: "ガーベラ",
+    description:
+      "整った放射状の花弁と豊富な色数で、花束の主役にも脇役にもなれる花。前向きな花言葉ばかりで贈り物に選ばれやすい。花言葉は「希望」「常に前進」。",
+    flora: {
+      kind: "gerbera",
+      paletteHex: [0xe86a2e, 0xe873a0, 0xf2c23a],
+      stemCount: 5,
+      seed: 24,
+    },
+    vase: {
+      profile: { heightM: 0.3, neckRadiusM: 0.05, bellyRadiusM: 0.062, baseRadiusM: 0.06 },
+      style: { kind: "metal", colorHex: 0xb08d4a },
+    },
+  },
+  {
+    id: "margaret",
+    name: "マーガレット",
+    description:
+      "「好き、嫌い、好き……」の花占いはこの花から。ギリシャ語の「真珠(margarites)」が名前の由来で、白い一重咲きが清楚。花言葉は「恋占い」「真実の愛」。",
+    flora: {
+      kind: "margaret",
+      paletteHex: [0xf5f2ea],
+      stemCount: 6,
+      seed: 25,
+    },
+    vase: {
+      profile: { heightM: 0.24, neckRadiusM: 0.045, bellyRadiusM: 0.055, baseRadiusM: 0.05 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "kasumisou",
+    name: "かすみ草",
+    description:
+      "無数の小さな白い花が霞のように広がる名脇役。近年は主役として束ねるブーケも人気で、ドライフラワーにしても長く楽しめる。花言葉は「幸福」「無垢の愛」。",
+    flora: {
+      kind: "kasumisou",
+      paletteHex: [0xf5f4ee],
+      stemCount: 8,
+      seed: 26,
+    },
+    vase: {
+      profile: { heightM: 0.3, neckRadiusM: 0.034, bellyRadiusM: 0.044, baseRadiusM: 0.046 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "rindou",
+    name: "リンドウ",
+    description:
+      "秋の野に凛と咲く青紫の花。敬老の日に贈る花としても定着している——根が生薬「竜胆」として長寿に効くとされたことから。花言葉は「勝利」「正義感」。",
+    flora: {
+      kind: "rindou",
+      paletteHex: [0x3a55a8, 0x5a4fa0],
+      stemCount: 5,
+      seed: 27,
+    },
+    vase: {
+      profile: { heightM: 0.29, neckRadiusM: 0.046, bellyRadiusM: 0.06, baseRadiusM: 0.054 },
+      style: { kind: "ceramic", colorHex: 0x5b6b7e },
+    },
+  },
+  {
+    id: "calla",
+    name: "カラー",
+    description:
+      "くるりと巻いた白い苞(ほう)がワイングラスのよう。すっと伸びた立ち姿からウェディングブーケの定番となった。名はギリシャ語の「美しい(kallos)」。花言葉は「華麗なる美」。",
+    flora: {
+      kind: "calla",
+      paletteHex: [0xf4f1e8, 0xe8c23a],
+      stemCount: 4,
+      seed: 28,
+    },
+    vase: {
+      profile: { heightM: 0.34, neckRadiusM: 0.048, bellyRadiusM: 0.054, baseRadiusM: 0.058 },
+      style: { kind: "ceramic", colorHex: 0xf2efe8 },
+    },
+  },
 ];
 
 // Seasonal candidates per month (0 = January); the pick cycles week by
 // week so consecutive weeks always differ.
 const MONTH_ROTATION: ReadonlyArray<readonly string[]> = [
   ["ume", "suisen", "nanten"], // 1月
-  ["ume", "tulip", "suisen"], // 2月
-  ["sakura", "mimosa", "tulip"], // 3月
-  ["tulip", "sakura", "peony"], // 4月
-  ["peony", "carnation", "hydrangea"], // 5月
-  ["hydrangea", "lavender", "doudan"], // 6月
+  ["ume", "ranunculus", "anemone", "suisen"], // 2月
+  ["sakura", "mimosa", "tulip", "margaret"], // 3月
+  ["tulip", "sakura", "gerbera", "peony"], // 4月
+  ["peony", "carnation", "calla", "hydrangea"], // 5月
+  ["hydrangea", "rose", "lavender", "doudan"], // 6月
   ["sunflower", "lily", "doudan"], // 7月
-  ["sunflower", "lily", "cosmos"], // 8月
-  ["cosmos", "mum", "sunflower"], // 9月
-  ["cosmos", "dahlia", "momiji"], // 10月
+  ["sunflower", "kasumisou", "lily", "cosmos"], // 8月
+  ["cosmos", "rindou", "mum", "sunflower"], // 9月
+  ["cosmos", "dahlia", "rose", "momiji"], // 10月
   ["momiji", "mum", "dahlia"], // 11月
   ["nanten", "momiji", "suisen"], // 12月
 ];

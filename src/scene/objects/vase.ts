@@ -63,12 +63,19 @@ function createVesselMesh(
           // buffer alone.
           depthWrite: false,
         })
-      : new THREE.MeshPhysicalMaterial({
-          color: style.colorHex,
-          roughness: 0.38,
-          clearcoat: 0.45,
-          clearcoatRoughness: 0.3,
-        });
+      : style.kind === "metal"
+        ? new THREE.MeshStandardMaterial({
+            color: style.colorHex,
+            metalness: 0.85,
+            roughness: 0.32,
+            envMapIntensity: 0.9,
+          })
+        : new THREE.MeshPhysicalMaterial({
+            color: style.colorHex,
+            roughness: 0.38,
+            clearcoat: 0.45,
+            clearcoatRoughness: 0.3,
+          });
 
   const mesh = new THREE.Mesh(new THREE.LatheGeometry(profile, 72), material);
   // Findable by the scene rig for frost styling — glazed ceramic doesn't

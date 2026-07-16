@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { Arrangement } from "../engine/arrangements";
+import type { BloomStage } from "../engine/bloomCycle";
 import { neutralMood } from "../engine/weather/mapping";
 import type { WeatherMood } from "../engine/weather/types";
 import type { SceneState } from "../engine/scene-state/sceneState";
@@ -16,6 +17,8 @@ export interface SceneRig {
   applySceneState(state: SceneState): void;
   /** Swap the centerpiece (weekly seasonal rotation / ?obj= pin). */
   setArrangement(arrangement: Arrangement): void;
+  /** Drive the centerpiece's bud→bloom→shed stage within the current week. */
+  setBloomStage(stage: BloomStage): void;
   /**
    * Whether the scene currently benefits from a high frame rate — particles
    * falling or lightning armed. Everything else (breeze, lighting fades,
@@ -122,6 +125,7 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
   // seasonal rotation rolls over.
   let centerpiece: THREE.Group | null = null;
   let centerpieceUpdate: ((tSec: number) => void) | null = null;
+  let centerpieceSetBloomStage: ((stage: BloomStage) => void) | null = null;
   let glassMaterial: THREE.MeshPhysicalMaterial | null = null;
 
   function setArrangement(arrangement: Arrangement): void {
@@ -133,6 +137,8 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
     centerpiece.scale.setScalar(0.64); // two sizes smaller in frame; still standing on y=0
     ctx.scene.add(centerpiece);
     centerpieceUpdate = (centerpiece.userData.update as ((t: number) => void) | undefined) ?? null;
+    centerpieceSetBloomStage =
+      (centerpiece.userData.setBloomStage as ((s: BloomStage) => void) | undefined) ?? null;
     glassMaterial = null;
     centerpiece.traverse((obj) => {
       if (obj instanceof THREE.Mesh && obj.name === "vase-glass") {
@@ -193,6 +199,9 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
 
   return {
     setArrangement,
+    setBloomStage(stage: BloomStage): void {
+      centerpieceSetBloomStage?.(stage);
+    },
     wantsHighFps(): boolean {
       // Lighting transitions deliberately don't count: they're slow
       // luminance/color ramps, perfectly smooth at the 10fps base rate.

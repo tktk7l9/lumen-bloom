@@ -1,11 +1,26 @@
 import * as THREE from "three";
 import {
   type BouquetOptions,
+  DEFAULT_BOUQUET,
   type StemLayout,
   layoutBouquet,
 } from "../../engine/geometry/flowerLayout";
 import { type PetalGrid, petalGrid } from "../../engine/geometry/petalGrid";
 import { phyllotaxis } from "../../engine/geometry/phyllotaxis";
+import { mulberry32 } from "../../engine/geometry/prng";
+import {
+  type BloomElement,
+  MAX_DEBRIS_INSTANCES,
+  addAnimatedRadialRing,
+  addFloorDebris,
+  attachBloomCycle,
+  scaleBloom,
+} from "./bloomRig";
+
+// Leaves unfurl alongside the flower (small → full over the bud days) and
+// wilt away on their own seeded schedule during the shed window — linked to
+// the same weekly cycle as the petals, not a separate static prop.
+const LEAF_BUD_FRAC = 0.4;
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -151,7 +166,11 @@ export function addRadialRing(
 }
 
 /** One sunflower head, built face-up (+Y) and oriented to the layout's head direction. */
-function createHead(stem: StemLayout, assets: SharedAssets): THREE.Group {
+function createHead(
+  stem: StemLayout,
+  assets: SharedAssets,
+  rand: () => number,
+): { head: THREE.Group; elements: BloomElement[] } {
   const head = new THREE.Group();
   head.position.set(...stem.headPosition);
   head.quaternion.setFromUnitVectors(UP, new THREE.Vector3(...stem.headDirection));
@@ -194,24 +213,31 @@ function createHead(stem: StemLayout, assets: SharedAssets): THREE.Group {
   // which is what gives a sunflower its depth when seen from the side.
   const tint = new THREE.Color().setHSL(0.108 + stem.colorSeed * 0.02, 1.0, 0.58);
   const innerTint = tint.clone().multiplyScalar(0.92);
-  addRadialRing(head, assets.petalGeometry, assets.petalMaterial, {
-    count: stem.petalCount,
-    ringRadius: discR * 0.92,
-    ringY: discR * 0.03,
-    tiltDeg: 9,
-    lengthM: petalLen,
-    angleOffsetRad: 0,
-    tint,
-  });
-  addRadialRing(head, assets.petalGeometry, assets.petalMaterial, {
-    count: stem.petalCount,
-    ringRadius: discR * 0.86,
-    ringY: discR * 0.09,
-    tiltDeg: 24,
-    lengthM: petalLen * 0.88,
-    angleOffsetRad: Math.PI / stem.petalCount,
-    tint: innerTint,
-  });
+  const elements: BloomElement[] = [];
+  elements.push(
+    addAnimatedRadialRing(head, assets.petalGeometry, assets.petalMaterial, {
+      count: stem.petalCount,
+      ringRadius: discR * 0.92,
+      ringY: discR * 0.03,
+      tiltDeg: 9,
+      lengthM: petalLen,
+      angleOffsetRad: 0,
+      tint,
+      rand,
+    }),
+  );
+  elements.push(
+    addAnimatedRadialRing(head, assets.petalGeometry, assets.petalMaterial, {
+      count: stem.petalCount,
+      ringRadius: discR * 0.86,
+      ringY: discR * 0.09,
+      tiltDeg: 24,
+      lengthM: petalLen * 0.88,
+      angleOffsetRad: Math.PI / stem.petalCount,
+      tint: innerTint,
+      rand,
+    }),
+  );
 
   // Two rows of calyx bracts behind the petals — the second, steeper row
   // wraps back over the green underside so the head's rear reads as layered
@@ -233,7 +259,7 @@ function createHead(stem: StemLayout, assets: SharedAssets): THREE.Group {
     angleOffsetRad: 0.9,
   });
 
-  return head;
+  return { head, elements };
 }
 
 function createLeaf(
@@ -287,10 +313,13 @@ export function attachBreeze(group: THREE.Group, stems: readonly THREE.Group[]):
 
 /** Procedural sunflower bouquet: thick stems, drooping leaves, phyllotaxis seed heads. */
 export function createFlowersGroup(opts?: Partial<BouquetOptions>): THREE.Group {
+  const resolved: BouquetOptions = { ...DEFAULT_BOUQUET, ...opts };
   const stems = layoutBouquet(opts);
   const assets = createSharedAssets();
   const group = new THREE.Group();
   const stemGroups: THREE.Group[] = [];
+  const rand = mulberry32(resolved.seed + 701);
+  const bloomElements: BloomElement[] = [];
 
   for (const stem of stems) {
     const stemGroup = new THREE.Group();
@@ -305,14 +334,44 @@ export function createFlowersGroup(opts?: Partial<BouquetOptions>): THREE.Group 
     stemGroup.add(stemMesh);
 
     for (const leaf of stem.leaves) {
-      stemGroup.add(createLeaf(leaf, curve, assets));
+      const leafMesh = createLeaf(leaf, curve, assets);
+      stemGroup.add(leafMesh);
+      const openScale = leafMesh.scale.clone();
+      bloomElements.push(
+        scaleBloom(leafMesh, openScale.clone().multiplyScalar(LEAF_BUD_FRAC), openScale, rand()),
+      );
     }
 
-    stemGroup.add(createHead(stem, assets));
+    const { head, elements } = createHead(stem, assets, rand);
+    stemGroup.add(head);
+    bloomElements.push(...elements);
     group.add(stemGroup);
     stemGroups.push(stemGroup);
   }
 
+  const avgHeadRadiusM = stems.reduce((sum, s) => sum + s.headRadiusM, 0) / stems.length;
+  bloomElements.push(
+    addFloorDebris(group, {
+      geometry: assets.petalGeometry,
+      material: assets.petalMaterial,
+      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 20),
+      sizeM: avgHeadRadiusM * 0.32,
+      radiusM: { min: resolved.vaseBaseRadiusM * 1.15, max: resolved.vaseBaseRadiusM * 2.4 },
+      rand,
+    }),
+  );
+  bloomElements.push(
+    addFloorDebris(group, {
+      geometry: assets.leafGeometry,
+      material: assets.leafMaterial,
+      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 6),
+      sizeM: 0.08,
+      radiusM: { min: resolved.vaseBaseRadiusM * 1.15, max: resolved.vaseBaseRadiusM * 2.4 },
+      rand,
+    }),
+  );
+
   attachBreeze(group, stemGroups);
+  attachBloomCycle(group, bloomElements);
   return group;
 }

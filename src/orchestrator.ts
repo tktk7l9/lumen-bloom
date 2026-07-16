@@ -10,6 +10,7 @@ import { moonPosition } from "./engine/astro/lunar";
 import { moonPhase } from "./engine/astro/moonphase";
 import { sunPosition } from "./engine/astro/solar";
 import type { GeoLocation } from "./engine/astro/types";
+import { bloomStageForDate } from "./engine/bloomCycle";
 import { loadSavedLocation, requestLocation, saveLocation } from "./engine/geolocation/geolocation";
 import { deriveSceneState } from "./engine/scene-state/sceneState";
 import { parseUrlOverrides } from "./engine/urlState";
@@ -82,6 +83,9 @@ export function startApp(): void {
       currentArrangementId = arrangement.id;
       rig.setArrangement(arrangement);
     }
+    // Every applyScene, not just on arrangement swap — the day-in-week
+    // keeps advancing even while the arrangement itself stays the same.
+    rig.setBloomStage(bloomStageForDate(date));
     infoCard.render(arrangement.name, arrangement.description);
 
     const sun = sunPosition(date, currentLocation);
@@ -104,6 +108,21 @@ export function startApp(): void {
     ctx.render();
   }
 
+  // The loading veil (index.html) paints instantly via CSS; this fades it
+  // out once the real scene has actually been composited to the screen —
+  // one rAF only guarantees the draw call was issued, the second guarantees
+  // the browser painted it, so there's no one-frame flash of empty canvas.
+  function hideLoadingVeil(): void {
+    const veil = document.getElementById("loading");
+    if (!veil) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        veil.classList.add("loading--done");
+        window.setTimeout(() => veil.remove(), 700);
+      });
+    });
+  }
+
   async function refreshWeather(): Promise<void> {
     const result = await fetchCurrentWeather(currentLocation);
     if (result.ok) {
@@ -121,6 +140,7 @@ export function startApp(): void {
   applyScene();
   window.addEventListener("resize", renderFrame);
   renderFrame();
+  hideLoadingVeil();
 
   // The geolocation API is only called from the prompt's button (a user
   // gesture): auto-requesting on load annoys first-time visitors and trips

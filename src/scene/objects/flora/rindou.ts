@@ -2,9 +2,22 @@ import * as THREE from "three";
 import { layoutBouquet } from "../../../engine/geometry/flowerLayout";
 import { mulberry32 } from "../../../engine/geometry/prng";
 import { petalGrid } from "../../../engine/geometry/petalGrid";
+import {
+  type BloomElement,
+  type InstancePose,
+  MAX_DEBRIS_INSTANCES,
+  addAnimatedInstances,
+  addFloorDebris,
+  attachBloomCycle,
+  scaleBloom,
+} from "../bloomRig";
 import { attachBreeze, gridToGeometry } from "../flowers";
 
 const UP = new THREE.Vector3(0, 1, 0);
+// Real gentians barely open even in bloom — the bud pose is a subtly
+// smaller version of the same near-closed tube, not a different shape.
+const BUD_SCALE_FRAC = 0.6;
+const LEAF_BUD_FRAC = 0.4;
 
 export interface RindouOptions {
   paletteHex: readonly number[];
@@ -12,6 +25,7 @@ export interface RindouOptions {
   seed: number;
   vaseRimYM: number;
   vaseNeckRadiusM: number;
+  vaseBaseRadiusM: number;
 }
 
 /** Gentian bud: a nearly closed tube tapering to a pointed tip, along +Y. */
@@ -52,6 +66,7 @@ export function createRindouGroup(opts: RindouOptions): THREE.Group {
   const dir = new THREE.Vector3();
   const side = new THREE.Vector3();
   const normal = new THREE.Vector3();
+  const bloomElements: BloomElement[] = [];
 
   for (const stem of stems) {
     const stemGroup = new THREE.Group();
@@ -76,6 +91,10 @@ export function createRindouGroup(opts: RindouOptions): THREE.Group {
       const n = new THREE.Vector3().crossVectors(s, d);
       mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(s, d, n));
       stemGroup.add(mesh);
+      const openScale = mesh.scale.clone();
+      bloomElements.push(
+        scaleBloom(mesh, openScale.clone().multiplyScalar(LEAF_BUD_FRAC), openScale, rand()),
+      );
     }
 
     // Gentians stack their buds at the top: one crowning the tip, a few
@@ -86,6 +105,9 @@ export function createRindouGroup(opts: RindouOptions): THREE.Group {
     const budCount = 4 + Math.floor(rand() * 3);
     const buds = new THREE.InstancedMesh(budGeometry, budMaterial, budCount);
     buds.castShadow = true;
+    const openPoses: InstancePose[] = [];
+    const budPoses: InstancePose[] = [];
+    const shedAt = new Float32Array(budCount);
     for (let k = 0; k < budCount; k++) {
       const t = k === 0 ? 1 : 0.82 + rand() * 0.14;
       const p = curve.getPointAt(Math.min(t, 1));
@@ -96,24 +118,51 @@ export function createRindouGroup(opts: RindouOptions): THREE.Group {
       normal.crossVectors(side, dir);
       const len = 0.02 + rand() * 0.007;
       matrix.makeBasis(side, dir, normal);
-      matrix.scale(new THREE.Vector3(len * 0.55, len, len * 0.55));
-      matrix.setPosition(
+      const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
+      const position = new THREE.Vector3(
         p.x + Math.cos(a) * lean * 0.006,
         p.y - (k === 0 ? 0 : 0.004),
         p.z + Math.sin(a) * lean * 0.006,
       );
-      buds.setMatrixAt(k, matrix);
+      const scale = new THREE.Vector3(len * 0.55, len, len * 0.55);
+      openPoses.push({ position, quaternion, scale });
+      budPoses.push({ position, quaternion, scale: scale.clone().multiplyScalar(BUD_SCALE_FRAC) });
+      shedAt[k] = rand();
       color.copy(tint).offsetHSL(0, 0, (rand() - 0.5) * 0.06);
       buds.setColorAt(k, color);
     }
-    buds.instanceMatrix.needsUpdate = true;
     if (buds.instanceColor) buds.instanceColor.needsUpdate = true;
     stemGroup.add(buds);
+    bloomElements.push(addAnimatedInstances(buds, openPoses, budPoses, shedAt));
 
     group.add(stemGroup);
     stemGroups.push(stemGroup);
   }
 
+  const avgHeadRadiusM = stems.reduce((sum, s) => sum + s.headRadiusM, 0) / stems.length;
+  bloomElements.push(
+    addFloorDebris(group, {
+      geometry: budGeometry,
+      material: budMaterial,
+      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 20),
+      sizeM: avgHeadRadiusM * 0.3,
+      radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
+      rand,
+      tint: new THREE.Color(opts.paletteHex[0] ?? 0x3a55a8),
+    }),
+  );
+  bloomElements.push(
+    addFloorDebris(group, {
+      geometry: leafGeometry,
+      material: leafMaterial,
+      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 6),
+      sizeM: 0.05,
+      radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
+      rand,
+    }),
+  );
+
   attachBreeze(group, stemGroups);
+  attachBloomCycle(group, bloomElements);
   return group;
 }

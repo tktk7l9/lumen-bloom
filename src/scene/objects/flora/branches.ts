@@ -1,9 +1,30 @@
 import * as THREE from "three";
 import { mulberry32 } from "../../../engine/geometry/prng";
 import { petalGrid } from "../../../engine/geometry/petalGrid";
+import {
+  type BloomElement,
+  type InstancePose,
+  MAX_DEBRIS_INSTANCES,
+  addAnimatedInstances,
+  addFloorDebris,
+  attachBloomCycle,
+} from "../bloomRig";
 import { attachBreeze, gridToGeometry } from "../flowers";
 
 const UP = new THREE.Vector3(0, 1, 0);
+// Blossom petals splay open around the adornment spot's own outward normal —
+// same u/v/normal mixing as the built shape, weighted differently for a
+// folded bud vs the flat splayed-open look.
+const BUD_SPLAY_WEIGHT = 0.2;
+const BUD_AXIS_WEIGHT = 0.98;
+const OPEN_SPLAY_WEIGHT = 0.85;
+const OPEN_AXIS_WEIGHT = 0.55;
+const BUD_LENGTH_FRAC = 0.4;
+// Berries have no petal to open — they ripen in place (small → full size).
+const BERRY_BUD_FRAC = 0.35;
+// The berry cluster's own accompanying leaves unfurl and wilt the same way
+// as a flower species' stem leaves — linked to the same weekly cycle.
+const LEAF_BUD_FRAC = 0.4;
 
 export type BranchAdornment =
   | { type: "blossom"; petalHex: number; centerHex: number }
@@ -88,12 +109,48 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
     side: THREE.DoubleSide,
   });
   const sphereGeometry = new THREE.SphereGeometry(1, 8, 6);
+  const centerMaterial =
+    opts.adorn.type === "blossom"
+      ? new THREE.MeshStandardMaterial({ color: opts.adorn.centerHex, roughness: 0.8 })
+      : null;
+  const berryMaterial =
+    opts.adorn.type === "berry"
+      ? new THREE.MeshStandardMaterial({ color: opts.adorn.berryHex, roughness: 0.35 })
+      : null;
 
   const matrix = new THREE.Matrix4();
   const dir = new THREE.Vector3();
   const side = new THREE.Vector3();
   const pnormal = new THREE.Vector3();
   const color = new THREE.Color();
+  const bloomElements: BloomElement[] = [];
+
+  function petalPose(
+    u: THREE.Vector3,
+    v: THREE.Vector3,
+    n: THREE.Vector3,
+    a: number,
+    splay: number,
+    axis: number,
+    length: number,
+    center: THREE.Vector3,
+  ): InstancePose {
+    dir
+      .copy(u)
+      .multiplyScalar(Math.cos(a))
+      .addScaledVector(v, Math.sin(a))
+      .multiplyScalar(splay)
+      .addScaledVector(n, axis)
+      .normalize();
+    side.crossVectors(n, dir).normalize();
+    pnormal.crossVectors(side, dir);
+    matrix.makeBasis(side, dir, pnormal);
+    return {
+      position: center.clone(),
+      quaternion: new THREE.Quaternion().setFromRotationMatrix(matrix),
+      scale: new THREE.Vector3(length, length, length),
+    };
+  }
 
   for (let b = 0; b < Math.max(1, opts.branchCount); b++) {
     const stemGroup = new THREE.Group();
@@ -174,13 +231,12 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
     if (opts.adorn.type === "blossom") {
       const blossoms = new THREE.InstancedMesh(petalGeometry, petalMaterial, spots.length * 5);
       blossoms.castShadow = true;
-      const centers = new THREE.InstancedMesh(
-        sphereGeometry,
-        new THREE.MeshStandardMaterial({ color: opts.adorn.centerHex, roughness: 0.8 }),
-        spots.length,
-      );
+      const centers = new THREE.InstancedMesh(sphereGeometry, centerMaterial as THREE.Material, spots.length);
       color.setHex(opts.adorn.petalHex);
       let instance = 0;
+      const openPoses: InstancePose[] = [];
+      const budPoses: InstancePose[] = [];
+      const shedAt = new Float32Array(spots.length * 5);
       spots.forEach((spot, si) => {
         const u = new THREE.Vector3()
           .crossVectors(Math.abs(spot.normal.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : UP, spot.normal)
@@ -190,19 +246,22 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
         const size = 0.009 + rand() * 0.004;
         for (let k = 0; k < 5; k++) {
           const a = spin + (k / 5) * Math.PI * 2;
-          dir
-            .copy(u)
-            .multiplyScalar(Math.cos(a))
-            .addScaledVector(v, Math.sin(a))
-            .multiplyScalar(0.85)
-            .addScaledVector(spot.normal, 0.55)
-            .normalize();
-          side.crossVectors(spot.normal, dir).normalize();
-          pnormal.crossVectors(side, dir);
-          matrix.makeBasis(side, dir, pnormal);
-          matrix.scale(new THREE.Vector3(size, size, size));
-          matrix.setPosition(spot.position.x, spot.position.y, spot.position.z);
-          blossoms.setMatrixAt(instance, matrix);
+          openPoses.push(
+            petalPose(u, v, spot.normal, a, OPEN_SPLAY_WEIGHT, OPEN_AXIS_WEIGHT, size, spot.position),
+          );
+          budPoses.push(
+            petalPose(
+              u,
+              v,
+              spot.normal,
+              a,
+              BUD_SPLAY_WEIGHT,
+              BUD_AXIS_WEIGHT,
+              size * BUD_LENGTH_FRAC,
+              spot.position,
+            ),
+          );
+          shedAt[instance] = rand();
           blossoms.setColorAt(instance, color);
           instance++;
         }
@@ -215,80 +274,159 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
         );
         centers.setMatrixAt(si, matrix);
       });
-      blossoms.instanceMatrix.needsUpdate = true;
       if (blossoms.instanceColor) blossoms.instanceColor.needsUpdate = true;
       centers.instanceMatrix.needsUpdate = true;
       stemGroup.add(blossoms, centers);
+      bloomElements.push(addAnimatedInstances(blossoms, openPoses, budPoses, shedAt));
     } else if (opts.adorn.type === "leaf") {
       const leaves = new THREE.InstancedMesh(leafGeometry, leafMaterial, spots.length);
       leaves.castShadow = true;
       const hexes = opts.adorn.leafHexes;
+      // Leaves don't bud open — only the shed window (last 2 days) applies,
+      // so bud and open share the same pose and openness has no effect.
+      const poses: InstancePose[] = [];
+      const shedAt = new Float32Array(spots.length);
       spots.forEach((spot, i) => {
         dir.copy(spot.normal).addScaledVector(UP, -0.3).normalize();
         side.crossVectors(UP, dir).normalize();
         pnormal.crossVectors(side, dir);
         const size = 0.022 + rand() * 0.012;
         matrix.makeBasis(side, dir, pnormal);
-        matrix.scale(new THREE.Vector3(size, size, size));
-        matrix.setPosition(spot.position.x, spot.position.y, spot.position.z);
-        leaves.setMatrixAt(i, matrix);
+        poses.push({
+          position: spot.position.clone(),
+          quaternion: new THREE.Quaternion().setFromRotationMatrix(matrix),
+          scale: new THREE.Vector3(size, size, size),
+        });
+        shedAt[i] = rand();
         color.setHex(hexes[Math.floor(rand() * hexes.length)] ?? 0xc7472e);
         leaves.setColorAt(i, color);
       });
-      leaves.instanceMatrix.needsUpdate = true;
       if (leaves.instanceColor) leaves.instanceColor.needsUpdate = true;
       stemGroup.add(leaves);
+      bloomElements.push(addAnimatedInstances(leaves, poses, poses, shedAt));
     } else {
       // Berries: clusters at a few spots plus a handful of green leaves.
+      // Only the berries ripen+shed; the accompanying leaves stay put.
       const clusterSpots = spots.filter((_, i) => i % 3 === 0);
       const berriesPerCluster = 9;
       const berries = new THREE.InstancedMesh(
         sphereGeometry,
-        new THREE.MeshStandardMaterial({ color: opts.adorn.berryHex, roughness: 0.35 }),
+        berryMaterial as THREE.Material,
         clusterSpots.length * berriesPerCluster,
       );
       berries.castShadow = true;
       let instance = 0;
+      const openPoses: InstancePose[] = [];
+      const budPoses: InstancePose[] = [];
+      const shedAt = new Float32Array(clusterSpots.length * berriesPerCluster);
+      const identity = new THREE.Quaternion();
       for (const spot of clusterSpots) {
         for (let k = 0; k < berriesPerCluster; k++) {
           const r = 0.0034 + rand() * 0.001;
-          matrix.makeScale(r, r, r);
-          matrix.setPosition(
+          const position = new THREE.Vector3(
             spot.position.x + spot.normal.x * 0.006 + (rand() - 0.5) * 0.014,
             spot.position.y + spot.normal.y * 0.006 + (rand() - 0.5) * 0.014,
             spot.position.z + spot.normal.z * 0.006 + (rand() - 0.5) * 0.014,
           );
-          berries.setMatrixAt(instance, matrix);
+          openPoses.push({ position, quaternion: identity, scale: new THREE.Vector3(r, r, r) });
+          budPoses.push({
+            position,
+            quaternion: identity,
+            scale: new THREE.Vector3(r, r, r).multiplyScalar(BERRY_BUD_FRAC),
+          });
+          shedAt[instance] = rand();
           instance++;
         }
       }
-      berries.instanceMatrix.needsUpdate = true;
       stemGroup.add(berries);
+      bloomElements.push(addAnimatedInstances(berries, openPoses, budPoses, shedAt));
 
       const leafSpots = spots.filter((_, i) => i % 3 === 1);
       const leaves = new THREE.InstancedMesh(leafGeometry, leafMaterial, leafSpots.length);
       leaves.castShadow = true;
       color.setHex(opts.adorn.leafHex);
+      const leafOpenPoses: InstancePose[] = [];
+      const leafBudPoses: InstancePose[] = [];
+      const leafShedAt = new Float32Array(leafSpots.length);
       leafSpots.forEach((spot, i) => {
         dir.copy(spot.normal).addScaledVector(UP, -0.2).normalize();
         side.crossVectors(UP, dir).normalize();
         pnormal.crossVectors(side, dir);
         const size = 0.02 + rand() * 0.008;
         matrix.makeBasis(side, dir, pnormal);
-        matrix.scale(new THREE.Vector3(size * 0.5, size, size));
-        matrix.setPosition(spot.position.x, spot.position.y, spot.position.z);
-        leaves.setMatrixAt(i, matrix);
+        const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
+        const scale = new THREE.Vector3(size * 0.5, size, size);
+        leafOpenPoses.push({ position: spot.position.clone(), quaternion, scale });
+        leafBudPoses.push({
+          position: spot.position.clone(),
+          quaternion,
+          scale: scale.clone().multiplyScalar(LEAF_BUD_FRAC),
+        });
+        leafShedAt[i] = rand();
         leaves.setColorAt(i, color);
       });
-      leaves.instanceMatrix.needsUpdate = true;
       if (leaves.instanceColor) leaves.instanceColor.needsUpdate = true;
       stemGroup.add(leaves);
+      bloomElements.push(addAnimatedInstances(leaves, leafOpenPoses, leafBudPoses, leafShedAt));
     }
 
     group.add(stemGroup);
     stemGroups.push(stemGroup);
   }
 
+  const debrisCount = Math.min(MAX_DEBRIS_INSTANCES, Math.max(1, opts.branchCount) * 20);
+  const debrisRadiusM = { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 };
+  if (opts.adorn.type === "blossom") {
+    bloomElements.push(
+      addFloorDebris(group, {
+        geometry: petalGeometry,
+        material: petalMaterial,
+        count: debrisCount,
+        sizeM: 0.011,
+        radiusM: debrisRadiusM,
+        rand,
+        tint: new THREE.Color(opts.adorn.petalHex),
+      }),
+    );
+  } else if (opts.adorn.type === "leaf") {
+    bloomElements.push(
+      addFloorDebris(group, {
+        geometry: leafGeometry,
+        material: leafMaterial,
+        count: debrisCount,
+        sizeM: 0.02,
+        radiusM: debrisRadiusM,
+        rand,
+        tint: new THREE.Color(opts.adorn.leafHexes[0] ?? 0xc7472e),
+      }),
+    );
+  } else {
+    // Berry material is already the correct color (unlike the neutral
+    // petal/leaf gradients), so no extra tint is needed here.
+    bloomElements.push(
+      addFloorDebris(group, {
+        geometry: sphereGeometry,
+        material: berryMaterial as THREE.Material,
+        count: debrisCount,
+        sizeM: 0.006,
+        radiusM: debrisRadiusM,
+        rand,
+      }),
+    );
+    bloomElements.push(
+      addFloorDebris(group, {
+        geometry: leafGeometry,
+        material: leafMaterial,
+        count: Math.min(MAX_DEBRIS_INSTANCES, Math.max(1, opts.branchCount) * 6),
+        sizeM: 0.014,
+        radiusM: debrisRadiusM,
+        rand,
+        tint: new THREE.Color(opts.adorn.leafHex),
+      }),
+    );
+  }
+
   attachBreeze(group, stemGroups);
+  attachBloomCycle(group, bloomElements);
   return group;
 }

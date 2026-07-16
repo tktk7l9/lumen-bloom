@@ -480,7 +480,7 @@ export function findArrangement(id: string): Arrangement | null {
   return ARRANGEMENTS.find((a) => a.id === resolved) ?? null;
 }
 
-const WEEK_MS = 7 * 86_400_000;
+export const WEEK_MS = 7 * 86_400_000;
 
 /**
  * The arrangement for this week. Southern-hemisphere viewers get the

@@ -1,8 +1,12 @@
 import * as THREE from "three";
 import { layoutBouquet } from "../../../engine/geometry/flowerLayout";
+import { type BloomElement, attachBloomCycle, scaleBloom } from "../bloomRig";
 import { attachBreeze } from "../flowers";
 
 const UP = new THREE.Vector3(0, 1, 0);
+// Calla has only one spathe per stem — nothing to shed, so it just grows
+// from a small rolled cone to its full flared, asymmetric size.
+const BUD_SCALE_FRAC = 0.3;
 
 export interface CallaOptions {
   /** [spathe white, spadix yellow] */
@@ -30,6 +34,7 @@ export function createCallaGroup(opts: CallaOptions): THREE.Group {
   const stems = layoutBouquet(opts);
   const group = new THREE.Group();
   const stemGroups: THREE.Group[] = [];
+  const bloomElements: BloomElement[] = [];
 
   const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x50713c, roughness: 0.6 });
   const spatheGeometry = createSpatheGeometry();
@@ -69,13 +74,16 @@ export function createCallaGroup(opts: CallaOptions): THREE.Group {
 
     const size = stem.headRadiusM * 0.55;
     const spathe = new THREE.Mesh(spatheGeometry, spatheMaterial);
-    spathe.scale.set(size * 0.82, size, size * 0.62); // squashed = gently asymmetric
     spathe.castShadow = true;
     head.add(spathe);
+    const openSpatheScale = new THREE.Vector3(size * 0.82, size, size * 0.62); // squashed = gently asymmetric
+    bloomElements.push(
+      scaleBloom(spathe, openSpatheScale.clone().multiplyScalar(BUD_SCALE_FRAC), openSpatheScale),
+    );
 
     const spadix = new THREE.Mesh(spadixGeometry, spadixMaterial);
-    spadix.scale.setScalar(size);
     head.add(spadix);
+    bloomElements.push(scaleBloom(spadix, size * BUD_SCALE_FRAC, size));
 
     stemGroup.add(head);
     group.add(stemGroup);
@@ -83,5 +91,6 @@ export function createCallaGroup(opts: CallaOptions): THREE.Group {
   }
 
   attachBreeze(group, stemGroups);
+  attachBloomCycle(group, bloomElements);
   return group;
 }

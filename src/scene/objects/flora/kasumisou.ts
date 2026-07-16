@@ -1,9 +1,18 @@
 import * as THREE from "three";
 import { layoutBouquet } from "../../../engine/geometry/flowerLayout";
 import { mulberry32 } from "../../../engine/geometry/prng";
+import {
+  type BloomElement,
+  type InstancePose,
+  MAX_DEBRIS_INSTANCES,
+  addAnimatedInstances,
+  addFloorDebris,
+  attachBloomCycle,
+} from "../bloomRig";
 import { attachBreeze } from "../flowers";
 
 const DOTS_PER_STEM = 30;
+const BUD_SCALE_FRAC = 0.35;
 
 export interface KasumisouOptions {
   paletteHex: readonly number[];
@@ -11,6 +20,7 @@ export interface KasumisouOptions {
   seed: number;
   vaseRimYM: number;
   vaseNeckRadiusM: number;
+  vaseBaseRadiusM: number;
 }
 
 /** A mist of tiny white dots hovering in a cloud over hair-thin stems. */
@@ -24,9 +34,10 @@ export function createKasumisouGroup(opts: KasumisouOptions): THREE.Group {
   const dotGeometry = new THREE.SphereGeometry(1, 5, 4);
   const dotMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.75 });
 
-  const matrix = new THREE.Matrix4();
   const color = new THREE.Color();
   const tint = new THREE.Color(opts.paletteHex[0] ?? 0xf5f4ee);
+  const identity = new THREE.Quaternion();
+  const bloomElements: BloomElement[] = [];
 
   for (const stem of stems) {
     const stemGroup = new THREE.Group();
@@ -46,29 +57,51 @@ export function createKasumisouGroup(opts: KasumisouOptions): THREE.Group {
     const cloudR = stem.headRadiusM * 0.55;
     const dots = new THREE.InstancedMesh(dotGeometry, dotMaterial, DOTS_PER_STEM);
     dots.castShadow = true;
+    const openPoses: InstancePose[] = [];
+    const budPoses: InstancePose[] = [];
+    const shedAt = new Float32Array(DOTS_PER_STEM);
     for (let k = 0; k < DOTS_PER_STEM; k++) {
       const r = cloudR * Math.sqrt(rand());
       const theta = rand() * Math.PI * 2;
       const phi = Math.acos(2 * rand() - 1);
       const s = 0.0016 + rand() * 0.0012;
-      matrix.makeScale(s, s, s);
-      matrix.setPosition(
+      const position = new THREE.Vector3(
         tip.x + r * Math.sin(phi) * Math.cos(theta),
         tip.y + r * Math.cos(phi) * 0.75,
         tip.z + r * Math.sin(phi) * Math.sin(theta),
       );
-      dots.setMatrixAt(k, matrix);
+      openPoses.push({ position, quaternion: identity, scale: new THREE.Vector3(s, s, s) });
+      budPoses.push({
+        position,
+        quaternion: identity,
+        scale: new THREE.Vector3(s, s, s).multiplyScalar(BUD_SCALE_FRAC),
+      });
+      shedAt[k] = rand();
       color.copy(tint).offsetHSL(0, 0, (rand() - 0.5) * 0.06);
       dots.setColorAt(k, color);
     }
-    dots.instanceMatrix.needsUpdate = true;
     if (dots.instanceColor) dots.instanceColor.needsUpdate = true;
     stemGroup.add(dots);
+    bloomElements.push(addAnimatedInstances(dots, openPoses, budPoses, shedAt));
 
     group.add(stemGroup);
     stemGroups.push(stemGroup);
   }
 
+  const avgHeadRadiusM = stems.reduce((sum, s) => sum + s.headRadiusM, 0) / stems.length;
+  bloomElements.push(
+    addFloorDebris(group, {
+      geometry: dotGeometry,
+      material: dotMaterial,
+      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 20),
+      sizeM: avgHeadRadiusM * 0.04,
+      radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
+      rand,
+      tint,
+    }),
+  );
+
   attachBreeze(group, stemGroups);
+  attachBloomCycle(group, bloomElements);
   return group;
 }

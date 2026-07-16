@@ -1,9 +1,19 @@
 import * as THREE from "three";
 import { layoutBouquet } from "../../../engine/geometry/flowerLayout";
 import { petalGrid } from "../../../engine/geometry/petalGrid";
-import { addRadialRing, attachBreeze, gridToGeometry } from "../flowers";
+import { mulberry32 } from "../../../engine/geometry/prng";
+import {
+  type BloomElement,
+  MAX_DEBRIS_INSTANCES,
+  addAnimatedRadialRing,
+  addFloorDebris,
+  attachBloomCycle,
+  scaleBloom,
+} from "../bloomRig";
+import { attachBreeze, gridToGeometry } from "../flowers";
 
 const UP = new THREE.Vector3(0, 1, 0);
+const LEAF_BUD_FRAC = 0.4;
 
 export interface NarcissusOptions {
   /** [petal white, trumpet yellow] */
@@ -12,6 +22,7 @@ export interface NarcissusOptions {
   seed: number;
   vaseRimYM: number;
   vaseNeckRadiusM: number;
+  vaseBaseRadiusM: number;
 }
 
 /** Trumpet lathe: a small flaring cup, opening along +Y. */
@@ -62,6 +73,8 @@ export function createNarcissusGroup(opts: NarcissusOptions): THREE.Group {
   });
 
   const petalTint = new THREE.Color(opts.paletteHex[0] ?? 0xf4f2ea);
+  const rand = mulberry32(opts.seed + 601);
+  const bloomElements: BloomElement[] = [];
 
   for (const stem of stems) {
     const stemGroup = new THREE.Group();
@@ -86,6 +99,10 @@ export function createNarcissusGroup(opts: NarcissusOptions): THREE.Group {
       const normal = new THREE.Vector3().crossVectors(side, dir);
       mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(side, dir, normal));
       stemGroup.add(mesh);
+      const openScale = mesh.scale.clone();
+      bloomElements.push(
+        scaleBloom(mesh, openScale.clone().multiplyScalar(LEAF_BUD_FRAC), openScale, rand()),
+      );
     }
 
     // Face along the layout's nod — narcissus famously look slightly down.
@@ -95,26 +112,53 @@ export function createNarcissusGroup(opts: NarcissusOptions): THREE.Group {
 
     const R = stem.headRadiusM * 0.32;
 
-    addRadialRing(head, petalGeometry, petalMaterial, {
-      count: 6,
-      ringRadius: R * 0.28,
-      ringY: 0,
-      tiltDeg: 22,
-      lengthM: R,
-      angleOffsetRad: stem.colorSeed * Math.PI,
-      tint: petalTint,
-    });
+    bloomElements.push(
+      addAnimatedRadialRing(head, petalGeometry, petalMaterial, {
+        count: 6,
+        ringRadius: R * 0.28,
+        ringY: 0,
+        tiltDeg: 22,
+        lengthM: R,
+        angleOffsetRad: stem.colorSeed * Math.PI,
+        tint: petalTint,
+        rand,
+      }),
+    );
 
     const trumpet = new THREE.Mesh(trumpetGeometry, trumpetMaterial);
-    trumpet.scale.setScalar(R * 0.45);
     trumpet.castShadow = true;
     head.add(trumpet);
+    bloomElements.push(scaleBloom(trumpet, R * 0.45 * 0.3, R * 0.45));
 
     stemGroup.add(head);
     group.add(stemGroup);
     stemGroups.push(stemGroup);
   }
 
+  const avgHeadRadiusM = stems.reduce((sum, s) => sum + s.headRadiusM, 0) / stems.length;
+  bloomElements.push(
+    addFloorDebris(group, {
+      geometry: petalGeometry,
+      material: petalMaterial,
+      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 20),
+      sizeM: avgHeadRadiusM * 0.32 * 0.6,
+      radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
+      rand,
+      tint: petalTint,
+    }),
+  );
+  bloomElements.push(
+    addFloorDebris(group, {
+      geometry: leafGeometry,
+      material: leafMaterial,
+      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 6),
+      sizeM: 0.09,
+      radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
+      rand,
+    }),
+  );
+
   attachBreeze(group, stemGroups);
+  attachBloomCycle(group, bloomElements);
   return group;
 }

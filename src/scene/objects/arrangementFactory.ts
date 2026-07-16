@@ -145,5 +145,6 @@ export function createArrangement(a: Arrangement): THREE.Group {
   group.add(createVaseGroup(a.vase.profile, a.vase.style));
   group.add(flora);
   group.userData.update = flora.userData.update;
+  group.userData.setBloomStage = flora.userData.setBloomStage;
   return group;
 }

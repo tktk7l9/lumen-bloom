@@ -2,9 +2,19 @@ import * as THREE from "three";
 import { layoutBouquet } from "../../../engine/geometry/flowerLayout";
 import { petalGrid } from "../../../engine/geometry/petalGrid";
 import { phyllotaxis } from "../../../engine/geometry/phyllotaxis";
-import { addRadialRing, attachBreeze, gridToGeometry } from "../flowers";
+import { mulberry32 } from "../../../engine/geometry/prng";
+import {
+  type BloomElement,
+  MAX_DEBRIS_INSTANCES,
+  addAnimatedRadialRing,
+  addFloorDebris,
+  attachBloomCycle,
+  scaleBloom,
+} from "../bloomRig";
+import { attachBreeze, gridToGeometry } from "../flowers";
 
 const UP = new THREE.Vector3(0, 1, 0);
+const LEAF_BUD_FRAC = 0.4;
 
 export interface DaisyOptions {
   paletteHex: readonly number[];
@@ -12,6 +22,7 @@ export interface DaisyOptions {
   seed: number;
   vaseRimYM: number;
   vaseNeckRadiusM: number;
+  vaseBaseRadiusM: number;
 }
 
 interface DaisyRing {
@@ -113,6 +124,8 @@ function createGroup(opts: DaisyOptions, style: DaisyStyle): THREE.Group {
   const centerColor = new THREE.Color(style.discColorCenterHex);
   const rimColor = new THREE.Color(style.discColorRimHex);
   const scratch = new THREE.Color();
+  const rand = mulberry32(opts.seed + 601);
+  const bloomElements: BloomElement[] = [];
 
   for (const stem of stems) {
     const stemGroup = new THREE.Group();
@@ -137,6 +150,10 @@ function createGroup(opts: DaisyOptions, style: DaisyStyle): THREE.Group {
       const normal = new THREE.Vector3().crossVectors(side, dir);
       mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(side, dir, normal));
       stemGroup.add(mesh);
+      const openScale = mesh.scale.clone();
+      bloomElements.push(
+        scaleBloom(mesh, openScale.clone().multiplyScalar(LEAF_BUD_FRAC), openScale, rand()),
+      );
     }
 
     const head = new THREE.Group();
@@ -165,15 +182,18 @@ function createGroup(opts: DaisyOptions, style: DaisyStyle): THREE.Group {
     head.add(florets);
 
     style.rings.forEach((ring, i) => {
-      addRadialRing(head, petalGeometry, petalMaterial, {
-        count: ring.count,
-        ringRadius: discR * 0.9,
-        ringY: i * 0.0015,
-        tiltDeg: ring.tiltDeg,
-        lengthM: petalLen * ring.lenFrac,
-        angleOffsetRad: stem.colorSeed * Math.PI + i * (Math.PI / ring.count),
-        tint: i === 0 ? tint : tint.clone().multiplyScalar(0.95),
-      });
+      bloomElements.push(
+        addAnimatedRadialRing(head, petalGeometry, petalMaterial, {
+          count: ring.count,
+          ringRadius: discR * 0.9,
+          ringY: i * 0.0015,
+          tiltDeg: ring.tiltDeg,
+          lengthM: petalLen * ring.lenFrac,
+          angleOffsetRad: stem.colorSeed * Math.PI + i * (Math.PI / ring.count),
+          tint: i === 0 ? tint : tint.clone().multiplyScalar(0.95),
+          rand,
+        }),
+      );
     });
 
     stemGroup.add(head);
@@ -181,7 +201,31 @@ function createGroup(opts: DaisyOptions, style: DaisyStyle): THREE.Group {
     stemGroups.push(stemGroup);
   }
 
+  const avgHeadRadiusM = stems.reduce((sum, s) => sum + s.headRadiusM, 0) / stems.length;
+  bloomElements.push(
+    addFloorDebris(group, {
+      geometry: petalGeometry,
+      material: petalMaterial,
+      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 20),
+      sizeM: avgHeadRadiusM * style.petalLenFrac * 0.7,
+      radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
+      rand,
+      tint: new THREE.Color(opts.paletteHex[0] ?? 0xe973a8),
+    }),
+  );
+  bloomElements.push(
+    addFloorDebris(group, {
+      geometry: leafGeometry,
+      material: leafMaterial,
+      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 6),
+      sizeM: 0.06,
+      radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
+      rand,
+    }),
+  );
+
   attachBreeze(group, stemGroups);
+  attachBloomCycle(group, bloomElements);
   return group;
 }
 

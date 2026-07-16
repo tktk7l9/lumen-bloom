@@ -1,9 +1,19 @@
 import * as THREE from "three";
 import { layoutBouquet } from "../../../engine/geometry/flowerLayout";
 import { petalGrid } from "../../../engine/geometry/petalGrid";
-import { addRadialRing, attachBreeze, gridToGeometry } from "../flowers";
+import { mulberry32 } from "../../../engine/geometry/prng";
+import {
+  type BloomElement,
+  MAX_DEBRIS_INSTANCES,
+  addAnimatedRadialRing,
+  addFloorDebris,
+  attachBloomCycle,
+  scaleBloom,
+} from "../bloomRig";
+import { attachBreeze, gridToGeometry } from "../flowers";
 
 const UP = new THREE.Vector3(0, 1, 0);
+const LEAF_BUD_FRAC = 0.4;
 
 export interface LilyOptions {
   paletteHex: readonly number[];
@@ -11,6 +21,7 @@ export interface LilyOptions {
   seed: number;
   vaseRimYM: number;
   vaseNeckRadiusM: number;
+  vaseBaseRadiusM: number;
 }
 
 /** Large recurved six-petal blooms with prominent stamens. */
@@ -51,6 +62,8 @@ export function createLilyGroup(opts: LilyOptions): THREE.Group {
   const dir = new THREE.Vector3();
   const side = new THREE.Vector3();
   const normal = new THREE.Vector3();
+  const rand = mulberry32(opts.seed + 601);
+  const bloomElements: BloomElement[] = [];
 
   for (const stem of stems) {
     const stemGroup = new THREE.Group();
@@ -75,6 +88,10 @@ export function createLilyGroup(opts: LilyOptions): THREE.Group {
       const n = new THREE.Vector3().crossVectors(s, d);
       mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(s, d, n));
       stemGroup.add(mesh);
+      const openScale = mesh.scale.clone();
+      bloomElements.push(
+        scaleBloom(mesh, openScale.clone().multiplyScalar(LEAF_BUD_FRAC), openScale, rand()),
+      );
     }
 
     // Lilies face outward, barely nodding.
@@ -92,24 +109,30 @@ export function createLilyGroup(opts: LilyOptions): THREE.Group {
     );
 
     // Two offset triads make the classic six-tepal star.
-    addRadialRing(head, petalGeometry, petalMaterial, {
-      count: 3,
-      ringRadius: R * 0.12,
-      ringY: 0,
-      tiltDeg: 38,
-      lengthM: R,
-      angleOffsetRad: 0,
-      tint,
-    });
-    addRadialRing(head, petalGeometry, petalMaterial, {
-      count: 3,
-      ringRadius: R * 0.12,
-      ringY: -0.004,
-      tiltDeg: 30,
-      lengthM: R * 0.96,
-      angleOffsetRad: Math.PI / 3,
-      tint: tint.clone().multiplyScalar(0.97),
-    });
+    bloomElements.push(
+      addAnimatedRadialRing(head, petalGeometry, petalMaterial, {
+        count: 3,
+        ringRadius: R * 0.12,
+        ringY: 0,
+        tiltDeg: 38,
+        lengthM: R,
+        angleOffsetRad: 0,
+        tint,
+        rand,
+      }),
+    );
+    bloomElements.push(
+      addAnimatedRadialRing(head, petalGeometry, petalMaterial, {
+        count: 3,
+        ringRadius: R * 0.12,
+        ringY: -0.004,
+        tiltDeg: 30,
+        lengthM: R * 0.96,
+        angleOffsetRad: Math.PI / 3,
+        tint: tint.clone().multiplyScalar(0.97),
+        rand,
+      }),
+    );
 
     // Six stamens splaying from the throat, brown anthers on the tips.
     const filaments = new THREE.InstancedMesh(filamentGeometry, filamentMaterial, 6);
@@ -141,6 +164,30 @@ export function createLilyGroup(opts: LilyOptions): THREE.Group {
     stemGroups.push(stemGroup);
   }
 
+  const avgHeadRadiusM = stems.reduce((sum, s) => sum + s.headRadiusM, 0) / stems.length;
+  bloomElements.push(
+    addFloorDebris(group, {
+      geometry: petalGeometry,
+      material: petalMaterial,
+      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 20),
+      sizeM: avgHeadRadiusM * 0.62 * 0.5,
+      radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
+      rand,
+      tint: new THREE.Color(opts.paletteHex[0] ?? 0xf6f3ec),
+    }),
+  );
+  bloomElements.push(
+    addFloorDebris(group, {
+      geometry: leafGeometry,
+      material: leafMaterial,
+      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 6),
+      sizeM: 0.07,
+      radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
+      rand,
+    }),
+  );
+
   attachBreeze(group, stemGroups);
+  attachBloomCycle(group, bloomElements);
   return group;
 }

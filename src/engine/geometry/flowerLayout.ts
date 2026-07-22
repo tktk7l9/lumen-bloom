@@ -128,7 +128,9 @@ export function layoutBouquet(opts?: Partial<BouquetOptions>): StemLayout[] {
       controlPoints: [foot, rim, p1, p2, tip],
       headPosition,
       headDirection,
-      headRadiusM: 0.055 + rand() * 0.018,
+      // Wide spread on purpose — a real bouquet mixes a few dominant blooms
+      // with plenty of smaller ones, not a shelf of identical heads.
+      headRadiusM: 0.044 + rand() * 0.046,
       petalCount: 21 + Math.floor(rand() * 8),
       colorSeed: rand(),
       leaves,

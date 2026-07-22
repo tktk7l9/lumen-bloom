@@ -95,8 +95,8 @@ describe("layoutBouquet", () => {
 
   it("keeps head radius in a plausible cut-flower range", () => {
     for (const stem of layoutBouquet({ stemCount: 6, seed: 7 })) {
-      expect(stem.headRadiusM).toBeGreaterThanOrEqual(0.055);
-      expect(stem.headRadiusM).toBeLessThanOrEqual(0.073);
+      expect(stem.headRadiusM).toBeGreaterThanOrEqual(0.044);
+      expect(stem.headRadiusM).toBeLessThanOrEqual(0.09);
     }
   });
 

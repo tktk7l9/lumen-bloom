@@ -1,6 +1,6 @@
 # Lumen Bloom — 太陽と天気を映す花瓶
 
-**[▶ 開く](https://lumen-bloom.vercel.app)**
+**[▶ 開く](https://lumen-bloom.saitotakuya0719.workers.dev)**
 
 現在地の緯度経度から計算したリアルタイムの太陽・月の位置で部屋の隅に置かれた花瓶に窓越しの光と影を落とし、現在地の天気(晴れ/曇り/霧/雨/雪/雷雨)を空間の雰囲気に反映する、常時起動できる3Dウォールペーパー。
 
@@ -58,3 +58,14 @@ npm run build       # 型チェック + 本番ビルド
 - Mozilla Observatory: **A+（score 120・tests 10/10）**
 - テスト: **179**（`src/engine` 100%カバレッジゲート・CI強制）
 - npm audit: **0件** / gitleaks: **0件**
+
+## ホスティング
+
+本番は **Cloudflare Workers (static assets)**: https://lumen-bloom.saitotakuya0719.workers.dev
+
+2026-08-11、Vercel 無料枠の超過でアカウントが停止（全プロジェクトが
+`402 DEPLOYMENT_DISABLED`）したため移行した。ビルド成果物は純粋な静的
+ファイルなので Worker スクリプトは無く、`wrangler.jsonc` の `assets` だけで
+配信している。セキュリティヘッダーは `public/_headers`（`vercel.json` の
+`headers` を移植したもの）。`npm run deploy` で build + wrangler deploy。
+Vercel 側の設定も残置してあるので、復旧すれば両方に出せる。

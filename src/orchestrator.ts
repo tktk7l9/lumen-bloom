@@ -22,6 +22,8 @@ import { createSceneRig } from "./scene/scene";
 import { createHud } from "./ui/hud";
 import { createInfoCard } from "./ui/infoCard";
 import { createPermissionPrompt } from "./ui/permissionPrompt";
+import { createRestoreButton } from "./ui/restoreButton";
+import { createToast } from "./ui/toast";
 import { setupWakeLock } from "./ui/wakeLock";
 
 // Used until a real GPS fix lands (or forever, if the user denies it).
@@ -53,13 +55,55 @@ export function startApp(): void {
   // the page has real text content seconds earlier on slow devices. The
   // prompt's click handler is bound lazily — the heavy pieces it needs are
   // created right after.
-  const hud = createHud(appMount, overrides.hud);
-  const infoCard = createInfoCard(appMount, overrides.info);
+  // Hiding an overlay is instant; an undo toast and a restore button make
+  // it reversible (SHIG 57, 54, 60).
+  const toast = createToast(appMount);
+  const restoreButton = createRestoreButton(appMount, restoreOverlays);
+  const hud = createHud(appMount, overrides.hud, () => {
+    toast.show("時計を隠しました", () => {
+      hud.show();
+      syncRestoreButton();
+    });
+    syncRestoreButton();
+  });
+  const infoCard = createInfoCard(appMount, overrides.info, () => {
+    toast.show("花の説明を隠しました", () => {
+      infoCard.show();
+      syncRestoreButton();
+    });
+    syncRestoreButton();
+  });
   let requestGeolocation: (() => void) | null = null;
   const wantsPrompt =
     overrides.location === null && loadSavedLocation(localStorage) === null;
-  const prompt = wantsPrompt ? createPermissionPrompt(appMount) : null;
+  const prompt = wantsPrompt
+    ? createPermissionPrompt(appMount, () => {
+        toast.show("位置情報の案内を隠しました", () => {
+          prompt?.restore();
+          syncRestoreButton();
+        });
+        syncRestoreButton();
+      })
+    : null;
   prompt?.show(() => requestGeolocation?.());
+  // Set once the location is known (GPS fix): the prompt is gone for good.
+  let locationResolved = false;
+
+  function syncRestoreButton(): void {
+    restoreButton.setVisible(
+      hud.isUserHidden() ||
+        infoCard.isUserHidden() ||
+        (!locationResolved && (prompt?.isUserHidden() ?? false)),
+    );
+  }
+
+  function restoreOverlays(): void {
+    if (hud.isUserHidden()) hud.show();
+    if (infoCard.isUserHidden()) infoCard.show();
+    if (!locationResolved && prompt?.isUserHidden()) prompt.restore();
+    syncRestoreButton();
+  }
+  syncRestoreButton();
 
   const ctx = createRenderContext(canvas);
   const rig = createSceneRig(ctx, reducedMotion);
@@ -147,16 +191,19 @@ export function startApp(): void {
   // Chrome's no-gesture violation. Returning users ride the saved fix, and
   // a URL-pinned location wins over everything — no GPS, no prompt.
   requestGeolocation = (): void => {
+    prompt?.setState("pending");
     void requestLocation(navigator.geolocation).then((loc) => {
       if (loc) {
         currentLocation = loc;
         saveLocation(localStorage, loc);
+        locationResolved = true;
         prompt?.hide();
+        syncRestoreButton();
         applyScene();
         renderFrame();
         void refreshWeather(); // the previous fetch (if any) was for the old location
       } else {
-        prompt?.show(() => requestGeolocation?.());
+        prompt?.setState("failed");
       }
     });
   };

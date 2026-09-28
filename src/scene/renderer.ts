@@ -122,24 +122,34 @@ export async function precompileScene(
 
   const probe = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
   const standIns: THREE.Material[] = [];
-  try {
-    await compileOffscreen(renderer, probe, () => renderer.compileAsync(scene, camera));
-    if (renderer.shadowMap.enabled) {
-      await compileOffscreen(renderer, probe, () =>
-        compileShadowDepth(renderer, scene, camera, standIns),
-      );
-    }
-  } finally {
-    probe.dispose();
-  }
-  for (const program of renderer.info.programs ?? []) {
-    await yieldBetween();
-    program.getUniforms();
-    program.getAttributes();
-  }
-  return () => {
+  const release = (): void => {
     for (const m of standIns) m.dispose();
   };
+  try {
+    try {
+      await compileOffscreen(renderer, probe, () => renderer.compileAsync(scene, camera));
+      if (renderer.shadowMap.enabled) {
+        await compileOffscreen(renderer, probe, () =>
+          compileShadowDepth(renderer, scene, camera, standIns),
+        );
+      }
+    } finally {
+      probe.dispose();
+    }
+    // Snapshot: the list can change while we yield (a scene update landing
+    // mid-boot may release a program), and a released program must not be
+    // queried, so each one is re-checked after the yield.
+    for (const program of [...(renderer.info.programs ?? [])]) {
+      await yieldBetween();
+      if (!renderer.info.programs?.includes(program)) continue;
+      program.getUniforms();
+      program.getAttributes();
+    }
+  } catch (error) {
+    release();
+    throw error;
+  }
+  return release;
 }
 
 /** Run the synchronous part of a compileAsync call with `target` bound. */

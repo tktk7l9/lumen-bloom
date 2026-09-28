@@ -231,7 +231,14 @@ export function startApp(): void {
     // where KHR_parallel_shader_compile is available; without it this
     // behaves like the old synchronous first frame.
     context.resize();
-    await context.precompile(() => yieldToMain(window));
+    try {
+      await context.precompile(() => yieldToMain(window));
+    } catch (error) {
+      // Precompile is only a speed-up: if it fails (driver quirk, a new
+      // material type the shadow stand-ins don't cover), the first render()
+      // still links whatever is missing synchronously, as before.
+      console.warn("Shader precompile failed; continuing without it", error);
+    }
     // Published only now, so a weather/GPS update landing mid-boot can't
     // trigger a render (and a synchronous shader link) ahead of precompile.
     ctx = context;

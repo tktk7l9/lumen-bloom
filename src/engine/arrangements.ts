@@ -455,18 +455,18 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
 // Seasonal candidates per month (0 = January); the pick cycles week by
 // week so consecutive weeks always differ.
 const MONTH_ROTATION: ReadonlyArray<readonly string[]> = [
-  ["ume", "suisen", "nanten"], // 1月
-  ["ume", "ranunculus", "anemone", "suisen"], // 2月
-  ["sakura", "mimosa", "tulip", "margaret"], // 3月
-  ["tulip", "sakura", "gerbera", "peony"], // 4月
-  ["peony", "carnation", "calla", "hydrangea"], // 5月
-  ["hydrangea", "rose", "lavender", "doudan"], // 6月
-  ["sunflower", "lily", "doudan"], // 7月
-  ["sunflower", "kasumisou", "lily", "cosmos"], // 8月
-  ["cosmos", "rindou", "mum", "sunflower"], // 9月
-  ["cosmos", "dahlia", "rose", "momiji"], // 10月
-  ["momiji", "mum", "dahlia"], // 11月
-  ["nanten", "momiji", "suisen"], // 12月
+  ["ume", "suisen", "nanten"], // Jan
+  ["ume", "ranunculus", "anemone", "suisen"], // Feb
+  ["sakura", "mimosa", "tulip", "margaret"], // Mar
+  ["tulip", "sakura", "gerbera", "peony"], // Apr
+  ["peony", "carnation", "calla", "hydrangea"], // May
+  ["hydrangea", "rose", "lavender", "doudan"], // Jun
+  ["sunflower", "lily", "doudan"], // Jul
+  ["sunflower", "kasumisou", "lily", "cosmos"], // Aug
+  ["cosmos", "rindou", "mum", "sunflower"], // Sep
+  ["cosmos", "dahlia", "rose", "momiji"], // Oct
+  ["momiji", "mum", "dahlia"], // Nov
+  ["nanten", "momiji", "suisen"], // Dec
 ];
 
 // Old registry ids kept working for shared links.

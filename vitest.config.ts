@@ -10,8 +10,8 @@ export default defineConfig({
       include: ["src/engine/**/*.ts"],
       exclude: ["src/**/*.test.ts", "src/engine/**/__fixtures__/**"],
       reporter: ["text", "json-summary", "html"],
-      // 純ロジック層(天体計算・幾何生成・天気マッピング・シーン状態)は 100% を維持する。
-      // Three.js描画層(src/scene)とDOM層(src/ui)は presentation/runtime 層として対象外。
+      // Keep the pure logic layer (astronomy, geometry generation, weather mapping, scene state) at 100%.
+      // The Three.js rendering layer (src/scene) and the DOM layer (src/ui) are presentation/runtime layers and are excluded.
       thresholds: {
         "src/engine/**/*.ts": {
           statements: 100,

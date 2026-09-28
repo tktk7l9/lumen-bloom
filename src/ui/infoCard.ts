@@ -13,6 +13,8 @@ export interface InfoCard {
   isUserHidden(): boolean;
   /** Bring it back and forget the stored preference. */
   show(): void;
+  /** Move keyboard focus to its close button (after an undo / restore). */
+  focus(): void;
 }
 
 export function createInfoCard(
@@ -67,6 +69,9 @@ export function createInfoCard(
       userHidden = false;
       localStorage.removeItem(DISMISS_KEY);
       paint();
+    },
+    focus(): void {
+      if (!node.hidden) closeButton.focus();
     },
   };
 }

@@ -13,6 +13,7 @@ import type { GeoLocation } from "./engine/astro/types";
 import { bloomStageForDate } from "./engine/bloomCycle";
 import { loadSavedLocation, requestLocation, saveLocation } from "./engine/geolocation/geolocation";
 import { deriveSceneState } from "./engine/scene-state/sceneState";
+import { canRestorePrompt, restoreButtonVisible, type OverlayFlags } from "./engine/overlayState";
 import { parseUrlOverrides } from "./engine/urlState";
 import { fetchCurrentWeather } from "./engine/weather/client";
 import { shouldKeepStale } from "./engine/weather/staleness";
@@ -56,13 +57,15 @@ export function startApp(): void {
   // prompt's click handler is bound lazily — the heavy pieces it needs are
   // created right after.
   // Hiding an overlay is instant; an undo toast and a restore button make
-  // it reversible (SHIG 57, 54, 60).
-  const toast = createToast(appMount);
+  // it reversible (SHIG 57, 54, 60). Focus follows the overlay back so a
+  // keyboard user never lands on <body>.
+  const toast = createToast(appMount, () => restoreButton.focus());
   const restoreButton = createRestoreButton(appMount, restoreOverlays);
   const hud = createHud(appMount, overrides.hud, () => {
     toast.show("時計を隠しました", () => {
       hud.show();
       syncRestoreButton();
+      hud.focus();
     });
     syncRestoreButton();
   });
@@ -70,6 +73,7 @@ export function startApp(): void {
     toast.show("花の説明を隠しました", () => {
       infoCard.show();
       syncRestoreButton();
+      infoCard.focus();
     });
     syncRestoreButton();
   });
@@ -79,8 +83,10 @@ export function startApp(): void {
   const prompt = wantsPrompt
     ? createPermissionPrompt(appMount, () => {
         toast.show("位置情報の案内を隠しました", () => {
-          prompt?.restore();
+          // The toast may outlive a GPS fix; the prompt must stay gone then.
+          if (canRestorePrompt(overlayFlags())) prompt?.restore();
           syncRestoreButton();
+          prompt?.focus();
         });
         syncRestoreButton();
       })
@@ -89,19 +95,30 @@ export function startApp(): void {
   // Set once the location is known (GPS fix): the prompt is gone for good.
   let locationResolved = false;
 
+  function overlayFlags(): OverlayFlags {
+    return {
+      hudHidden: hud.isUserHidden(),
+      infoHidden: infoCard.isUserHidden(),
+      promptHidden: prompt?.isUserHidden() ?? false,
+      locationResolved,
+    };
+  }
+
   function syncRestoreButton(): void {
-    restoreButton.setVisible(
-      hud.isUserHidden() ||
-        infoCard.isUserHidden() ||
-        (!locationResolved && (prompt?.isUserHidden() ?? false)),
-    );
+    restoreButton.setVisible(restoreButtonVisible(overlayFlags()));
   }
 
   function restoreOverlays(): void {
-    if (hud.isUserHidden()) hud.show();
-    if (infoCard.isUserHidden()) infoCard.show();
-    if (!locationResolved && prompt?.isUserHidden()) prompt.restore();
+    const flags = overlayFlags();
+    if (flags.hudHidden) hud.show();
+    if (flags.infoHidden) infoCard.show();
+    if (canRestorePrompt(flags)) prompt?.restore();
     syncRestoreButton();
+    // The restore button just hid itself; hand focus to the first overlay
+    // that came back.
+    if (flags.hudHidden) hud.focus();
+    else if (flags.infoHidden) infoCard.focus();
+    else prompt?.focus();
   }
   syncRestoreButton();
 

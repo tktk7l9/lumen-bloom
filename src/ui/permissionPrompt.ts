@@ -21,6 +21,8 @@ export interface PermissionPrompt {
   isUserHidden(): boolean;
   /** Forget the × and show it again (restore button / undo). */
   restore(): void;
+  /** Move keyboard focus to its main button (after an undo / restore). */
+  focus(): void;
 }
 
 export function createPermissionPrompt(
@@ -79,6 +81,9 @@ export function createPermissionPrompt(
       localStorage.removeItem(DISMISS_KEY);
       setState("idle");
       node.hidden = false;
+    },
+    focus(): void {
+      if (!node.hidden) retryButton.focus();
     },
   };
 }

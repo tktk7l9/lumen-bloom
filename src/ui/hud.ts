@@ -16,6 +16,8 @@ export interface Hud {
   isUserHidden(): boolean;
   /** Bring it back and forget the stored preference. */
   show(): void;
+  /** Move keyboard focus to it (after an undo / restore). */
+  focus(): void;
 }
 
 export function createHud(
@@ -55,6 +57,9 @@ export function createHud(
       userHidden = false;
       localStorage.removeItem(DISMISS_KEY);
       paint();
+    },
+    focus(): void {
+      if (!node.hidden) node.focus();
     },
   };
 }

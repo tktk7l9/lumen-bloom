@@ -6,6 +6,8 @@ import { el } from "./dom";
 
 export interface RestoreButton {
   setVisible(visible: boolean): void;
+  /** Move keyboard focus here (no-op while hidden). */
+  focus(): void;
 }
 
 export function createRestoreButton(mount: HTMLElement, onRestore: () => void): RestoreButton {
@@ -19,6 +21,9 @@ export function createRestoreButton(mount: HTMLElement, onRestore: () => void): 
   return {
     setVisible(visible: boolean): void {
       node.hidden = !visible;
+    },
+    focus(): void {
+      if (!node.hidden) node.focus();
     },
   };
 }

@@ -4,7 +4,6 @@ import type { BloomStage } from "../engine/bloomCycle";
 import { neutralMood } from "../engine/weather/mapping";
 import type { WeatherMood } from "../engine/weather/types";
 import type { SceneState } from "../engine/scene-state/sceneState";
-import { applyProceduralEnvironment } from "./environment";
 import { createMoonLightRig } from "./lighting/moonLight";
 import { createSunLightRig } from "./lighting/sunLight";
 import { createArrangement } from "./objects/arrangementFactory";
@@ -99,10 +98,12 @@ function disposeDeep(root: THREE.Object3D): void {
   });
 }
 
-/** Assembles the room + centerpiece arrangement under the sun/moon light rigs + weather mood. */
+/**
+ * Assembles the room + centerpiece arrangement under the sun/moon light rigs + weather mood.
+ * The IBL environment (`applyProceduralEnvironment`) is applied separately by
+ * the caller so the boot sequence can yield between the two heavy steps.
+ */
 export function createSceneRig(ctx: RenderContext, reducedMotion = false): SceneRig {
-  applyProceduralEnvironment(ctx.renderer, ctx.scene);
-
   const ambient = new THREE.AmbientLight(0x445066, 0.5);
   ctx.scene.add(ambient);
 

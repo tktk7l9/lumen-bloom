@@ -42,6 +42,7 @@ npm run build       # 型チェック + 本番ビルド
 - `src/ui/` — 最小限のDOM(位置情報許可プロンプト・HUD・Wake Lock)。
 - `src/orchestrator.ts` — Geolocation/URLオーバーライド→太陽・月ループ→天気ポーリング→シーン更新の結線。
 - `src/main.ts` — 軽量ブートストラップ。`orchestrator.ts` を `import()` で読み込む。
+- `src/scene/stage.ts` — Three.js 側の入口(別チャンク)。文字の表示を先に済ませてから読み込み、3D の初期化は数タスクに分けて進める。
 - `public/` — `manifest.webmanifest`(maskable PNGアイコン)・`sw.js`(オフラインシェル)・`favicon.svg`。
 
 ## 技術スタック

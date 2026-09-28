@@ -15,11 +15,12 @@ import { loadSavedLocation, requestLocation, saveLocation } from "./engine/geolo
 import { deriveSceneState } from "./engine/scene-state/sceneState";
 import { canRestorePrompt, restoreButtonVisible, type OverlayFlags } from "./engine/overlayState";
 import { parseUrlOverrides } from "./engine/urlState";
+import { afterNextPaint, yieldToMain } from "./engine/util/yieldToMain";
 import { fetchCurrentWeather } from "./engine/weather/client";
 import { shouldKeepStale } from "./engine/weather/staleness";
 import type { WeatherSnapshot } from "./engine/weather/types";
-import { createRenderContext } from "./scene/renderer";
-import { createSceneRig } from "./scene/scene";
+import type { RenderContext } from "./scene/renderer";
+import type { SceneRig } from "./scene/scene";
 import { createHud } from "./ui/hud";
 import { createInfoCard } from "./ui/infoCard";
 import { createPermissionPrompt } from "./ui/permissionPrompt";
@@ -46,6 +47,10 @@ export function startApp(): void {
   const canvas = document.querySelector<HTMLCanvasElement>("#scene");
   const appMount = document.querySelector<HTMLDivElement>("#app");
   if (!canvas || !appMount) return;
+
+  // Start fetching the Three.js chunk right away; the overlays below don't
+  // need it and paint while it downloads.
+  const stageModule = import("./scene/stage");
 
   const overrides = parseUrlOverrides(window.location.search, Date.now());
   const now = (): Date => new Date(Date.now() + (overrides.timeOffsetMs ?? 0));
@@ -122,8 +127,10 @@ export function startApp(): void {
   }
   syncRestoreButton();
 
-  const ctx = createRenderContext(canvas);
-  const rig = createSceneRig(ctx, reducedMotion);
+  // The 3D stage is built by bootScene() below, spread over several tasks.
+  // Until it lands, applyScene() only updates the DOM overlays.
+  let ctx: RenderContext | null = null;
+  let rig: SceneRig | null = null;
   setupWakeLock();
 
   let currentLocation: GeoLocation =
@@ -140,22 +147,24 @@ export function startApp(): void {
     const date = now();
 
     const arrangement = pinnedArrangement ?? arrangementForDate(date, currentLocation.lat);
-    if (arrangement.id !== currentArrangementId) {
-      currentArrangementId = arrangement.id;
-      rig.setArrangement(arrangement);
-    }
-    // Every applyScene, not just on arrangement swap — the day-in-week
-    // keeps advancing even while the arrangement itself stays the same.
-    rig.setBloomStage(bloomStageForDate(date));
     infoCard.render(arrangement.name, arrangement.description);
 
     const sun = sunPosition(date, currentLocation);
     const phase = moonPhase(date);
-    const moon = {
-      position: moonPosition(date, currentLocation),
-      illumination: phase.illumination,
-    };
-    rig.applySceneState(deriveSceneState(sun, currentWeather, moon));
+    if (rig) {
+      if (arrangement.id !== currentArrangementId) {
+        currentArrangementId = arrangement.id;
+        rig.setArrangement(arrangement);
+      }
+      // Every applyScene, not just on arrangement swap — the day-in-week
+      // keeps advancing even while the arrangement itself stays the same.
+      rig.setBloomStage(bloomStageForDate(date));
+      const moon = {
+        position: moonPosition(date, currentLocation),
+        illumination: phase.illumination,
+      };
+      rig.applySceneState(deriveSceneState(sun, currentWeather, moon));
+    }
     hud.render({
       now: date,
       weather: currentWeather,
@@ -165,6 +174,7 @@ export function startApp(): void {
   }
 
   function renderFrame(): void {
+    if (!ctx) return;
     ctx.resize();
     ctx.render();
   }
@@ -195,13 +205,49 @@ export function startApp(): void {
     renderFrame();
   }
 
-  // Render immediately with the fallback/saved location and no weather yet
-  // — the GPS fix and the weather fetch both resolve asynchronously below
-  // and never block first paint.
+  // Text overlays first (they are the page's first contentful/largest
+  // paint), with the fallback/saved location and no weather yet — the GPS
+  // fix and the weather fetch both resolve asynchronously and never block
+  // first paint.
   applyScene();
-  window.addEventListener("resize", renderFrame);
-  renderFrame();
-  hideLoadingVeil();
+
+  // Staged 3D boot: each step runs in its own task so no single task holds
+  // the main thread for the whole Three.js startup. The loading veil stays
+  // up until the first full frame is on screen, so the finished look is
+  // unchanged.
+  async function bootScene(target: HTMLCanvasElement): Promise<void> {
+    const [{ applyProceduralEnvironment, createRenderContext, createSceneRig }] = await Promise.all([
+      stageModule,
+      afterNextPaint(window),
+    ]);
+    const context = createRenderContext(target);
+    await yieldToMain(window);
+    applyProceduralEnvironment(context.renderer, context.scene);
+    await yieldToMain(window);
+    rig = createSceneRig(context, reducedMotion);
+    applyScene();
+    await yieldToMain(window);
+    // Link every shader the first frame needs up front, off the main thread
+    // where KHR_parallel_shader_compile is available; without it this
+    // behaves like the old synchronous first frame.
+    context.resize();
+    try {
+      await context.precompile(() => yieldToMain(window));
+    } catch (error) {
+      // Precompile is only a speed-up: if it fails (driver quirk, a new
+      // material type the shadow stand-ins don't cover), the first render()
+      // still links whatever is missing synchronously, as before.
+      console.warn("Shader precompile failed; continuing without it", error);
+    }
+    // Published only now, so a weather/GPS update landing mid-boot can't
+    // trigger a render (and a synchronous shader link) ahead of precompile.
+    ctx = context;
+    window.addEventListener("resize", renderFrame);
+    renderFrame();
+    hideLoadingVeil();
+    booted = true;
+    if (!document.hidden) startPeriodicUpdates();
+  }
 
   // The geolocation API is only called from the prompt's button (a user
   // gesture): auto-requesting on load annoys first-time visitors and trips
@@ -230,6 +276,7 @@ export function startApp(): void {
   let weatherIntervalId: number | null = null;
   let sunIntervalId: number | null = null;
   let hudIntervalId: number | null = null;
+  let booted = false;
   let last = performance.now();
   let sunAccumulatorSec = 0;
   let frameAccumulatorSec = 0;
@@ -243,7 +290,7 @@ export function startApp(): void {
     // drift of sun and breeze — a big main-thread/battery win for a
     // wallpaper that spends most of its life doing almost nothing.
     frameAccumulatorSec += dt;
-    const targetFps = rig.wantsHighFps() ? 30 : 10;
+    const targetFps = rig?.wantsHighFps() ? 30 : 10;
     if (frameAccumulatorSec < 1 / targetFps) {
       rafId = requestAnimationFrame(tick);
       return;
@@ -257,8 +304,8 @@ export function startApp(): void {
       applyScene();
     }
 
-    rig.update(step);
-    ctx.render();
+    rig?.update(step);
+    ctx?.render();
     rafId = requestAnimationFrame(tick);
   }
 
@@ -289,6 +336,9 @@ export function startApp(): void {
   }
 
   document.addEventListener("visibilitychange", () => {
+    // Before the boot finishes there is no loop to pause; bootScene()
+    // starts it once the first frame is up.
+    if (!booted) return;
     if (document.hidden) {
       stopPeriodicUpdates();
     } else {
@@ -299,6 +349,8 @@ export function startApp(): void {
     }
   });
 
+  // The weather request goes out in parallel with the 3D boot; if it lands
+  // first, the first 3D frame already shows the real weather.
   void refreshWeather();
-  startPeriodicUpdates();
+  void bootScene(canvas);
 }

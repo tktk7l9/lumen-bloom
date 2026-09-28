@@ -13,6 +13,7 @@ import type { GeoLocation } from "./engine/astro/types";
 import { bloomStageForDate } from "./engine/bloomCycle";
 import { loadSavedLocation, requestLocation, saveLocation } from "./engine/geolocation/geolocation";
 import { deriveSceneState } from "./engine/scene-state/sceneState";
+import { canRestorePrompt, restoreButtonVisible, type OverlayFlags } from "./engine/overlayState";
 import { parseUrlOverrides } from "./engine/urlState";
 import { fetchCurrentWeather } from "./engine/weather/client";
 import { shouldKeepStale } from "./engine/weather/staleness";
@@ -22,6 +23,8 @@ import { createSceneRig } from "./scene/scene";
 import { createHud } from "./ui/hud";
 import { createInfoCard } from "./ui/infoCard";
 import { createPermissionPrompt } from "./ui/permissionPrompt";
+import { createRestoreButton } from "./ui/restoreButton";
+import { createToast } from "./ui/toast";
 import { setupWakeLock } from "./ui/wakeLock";
 
 // Used until a real GPS fix lands (or forever, if the user denies it).
@@ -53,13 +56,71 @@ export function startApp(): void {
   // the page has real text content seconds earlier on slow devices. The
   // prompt's click handler is bound lazily — the heavy pieces it needs are
   // created right after.
-  const hud = createHud(appMount, overrides.hud);
-  const infoCard = createInfoCard(appMount, overrides.info);
+  // Hiding an overlay is instant; an undo toast and a restore button make
+  // it reversible (SHIG 57, 54, 60). Focus follows the overlay back so a
+  // keyboard user never lands on <body>.
+  const toast = createToast(appMount, () => restoreButton.focus());
+  const restoreButton = createRestoreButton(appMount, restoreOverlays);
+  const hud = createHud(appMount, overrides.hud, () => {
+    toast.show("時計を隠しました", () => {
+      hud.show();
+      syncRestoreButton();
+      hud.focus();
+    });
+    syncRestoreButton();
+  });
+  const infoCard = createInfoCard(appMount, overrides.info, () => {
+    toast.show("花の説明を隠しました", () => {
+      infoCard.show();
+      syncRestoreButton();
+      infoCard.focus();
+    });
+    syncRestoreButton();
+  });
   let requestGeolocation: (() => void) | null = null;
   const wantsPrompt =
     overrides.location === null && loadSavedLocation(localStorage) === null;
-  const prompt = wantsPrompt ? createPermissionPrompt(appMount) : null;
+  const prompt = wantsPrompt
+    ? createPermissionPrompt(appMount, () => {
+        toast.show("位置情報の案内を隠しました", () => {
+          // The toast may outlive a GPS fix; the prompt must stay gone then.
+          if (canRestorePrompt(overlayFlags())) prompt?.restore();
+          syncRestoreButton();
+          prompt?.focus();
+        });
+        syncRestoreButton();
+      })
+    : null;
   prompt?.show(() => requestGeolocation?.());
+  // Set once the location is known (GPS fix): the prompt is gone for good.
+  let locationResolved = false;
+
+  function overlayFlags(): OverlayFlags {
+    return {
+      hudHidden: hud.isUserHidden(),
+      infoHidden: infoCard.isUserHidden(),
+      promptHidden: prompt?.isUserHidden() ?? false,
+      locationResolved,
+    };
+  }
+
+  function syncRestoreButton(): void {
+    restoreButton.setVisible(restoreButtonVisible(overlayFlags()));
+  }
+
+  function restoreOverlays(): void {
+    const flags = overlayFlags();
+    if (flags.hudHidden) hud.show();
+    if (flags.infoHidden) infoCard.show();
+    if (canRestorePrompt(flags)) prompt?.restore();
+    syncRestoreButton();
+    // The restore button just hid itself; hand focus to the first overlay
+    // that came back.
+    if (flags.hudHidden) hud.focus();
+    else if (flags.infoHidden) infoCard.focus();
+    else prompt?.focus();
+  }
+  syncRestoreButton();
 
   const ctx = createRenderContext(canvas);
   const rig = createSceneRig(ctx, reducedMotion);
@@ -147,16 +208,19 @@ export function startApp(): void {
   // Chrome's no-gesture violation. Returning users ride the saved fix, and
   // a URL-pinned location wins over everything — no GPS, no prompt.
   requestGeolocation = (): void => {
+    prompt?.setState("pending");
     void requestLocation(navigator.geolocation).then((loc) => {
       if (loc) {
         currentLocation = loc;
         saveLocation(localStorage, loc);
+        locationResolved = true;
         prompt?.hide();
+        syncRestoreButton();
         applyScene();
         renderFrame();
         void refreshWeather(); // the previous fetch (if any) was for the old location
       } else {
-        prompt?.show(() => requestGeolocation?.());
+        prompt?.setState("failed");
       }
     });
   };

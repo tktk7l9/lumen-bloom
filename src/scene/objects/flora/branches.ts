@@ -76,7 +76,7 @@ function spotsAlong(
 }
 
 /**
- * Cut branches (梅・桜・紅葉・南天): a leaning main branch with two side
+ * Cut branches (ume plum, sakura cherry, momiji maple, nanten): a leaning main branch with two side
  * shoots per stem, adorned with instanced blossoms, leaves, or berry
  * clusters along the upper reaches.
  */

@@ -42,6 +42,10 @@ body {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  /* max-content: with left:50% the shrink-to-fit width would otherwise be
+     capped at half the viewport, wrapping the text one glyph per line on
+     phones (SHIG 85). */
+  width: max-content;
   max-width: min(90vw, 28rem);
   padding: 0.6rem 0.9rem;
   border-radius: 999px;
@@ -59,7 +63,10 @@ body {
 }
 
 .location-prompt .close {
-  padding: 0.35rem 0.55rem;
+  /* 44px target around the small glyph (SHIG 78, 93). */
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
   border: none;
   background: transparent;
   color: #8a93aa;
@@ -101,7 +108,7 @@ body {
   right: 1.1rem;
   bottom: 3.4rem;
   max-width: 19rem;
-  padding: 0.75rem 2.1rem 0.8rem 0.95rem;
+  padding: 0.75rem 2.6rem 0.8rem 0.95rem;
   border-radius: 12px;
   background: rgba(10, 12, 20, 0.55);
   backdrop-filter: blur(6px);
@@ -123,9 +130,12 @@ body {
 
 .info-card .close {
   position: absolute;
-  top: 0.35rem;
-  right: 0.45rem;
-  padding: 0.2rem 0.4rem;
+  top: 0;
+  right: 0;
+  /* 44px target around the small glyph (SHIG 78, 93). */
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
   border: none;
   background: transparent;
   color: #8a93aa;
@@ -222,4 +232,125 @@ body {
 
 .location-prompt button:hover {
   background: rgba(203, 211, 230, 0.12);
+}
+
+.location-prompt button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* .location-prompt button above would otherwise re-add the pill border. */
+.location-prompt .close,
+.location-prompt .close:hover {
+  border: none;
+  background: transparent;
+}
+
+/* Phones: the bottom edge belongs to the info card and the HUD, so the
+   prompt moves to the top, under the wordmark, where the wall is empty. */
+@media (max-width: 40rem) {
+  .location-prompt {
+    /* Clears the 44px restore button in the top-right corner. */
+    top: 3.25rem;
+    bottom: auto;
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+    max-width: none;
+    transform: none;
+    border-radius: 14px;
+  }
+}
+
+/* Undo notice after hiding an overlay (SHIG 57, 54). On wide screens it
+   sits top-centre, between the wordmark and the restore button: the bottom
+   centre belongs to the location prompt, which the toast would otherwise
+   cover (hiding its button). Phones move the prompt to the top, so there
+   the toast takes the bottom edge and may sit over the HUD for its few
+   seconds. */
+.toast {
+  position: absolute;
+  left: 50%;
+  top: 0.35rem;
+  z-index: 1;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.3rem 0.4rem 0.3rem 1rem;
+  border-radius: 999px;
+  background: rgba(10, 12, 20, 0.85);
+  backdrop-filter: blur(6px);
+  color: #cbd3e6;
+  font: 0.8rem/1.4 system-ui, sans-serif;
+}
+
+.toast[hidden] {
+  display: none;
+}
+
+.toast button {
+  flex: none;
+  min-height: 2.75rem;
+  padding: 0 0.9rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #e6ebf5;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.toast button:hover {
+  background: rgba(203, 211, 230, 0.12);
+}
+
+/* Way back to hidden overlays (SHIG 60). Styled like the wordmark so the
+   wallpaper stays quiet. */
+.restore {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 0.8rem;
+  border: none;
+  background: transparent;
+  color: #8d96ab;
+  font: 0.78rem/1 system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+.restore:hover {
+  color: #dde3f0;
+}
+
+.restore[hidden] {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .toast {
+    top: auto;
+    bottom: 1rem;
+  }
+}
+
+/* Screen-reader-only text (the toast's always-present live region). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

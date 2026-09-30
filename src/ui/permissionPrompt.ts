@@ -38,7 +38,7 @@ export function createPermissionPrompt(
   );
   const node = el(
     "div",
-    { class: "location-prompt", hidden: true },
+    { class: "location-prompt", role: "group", "aria-label": "位置情報の案内", hidden: true },
     message,
     retryButton,
     closeButton,

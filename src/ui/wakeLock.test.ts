@@ -52,10 +52,8 @@ describe("setupWakeLock", () => {
   });
 
   it("retries once on the first pointer interaction when the initial request was denied", async () => {
-    const request = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("NotAllowedError"))
-      .mockResolvedValue({ release: vi.fn() });
+    // Denied every time, so a further retry would be observable.
+    const request = vi.fn().mockRejectedValue(new Error("NotAllowedError"));
     installWakeLock(request);
 
     setupWakeLock();
@@ -66,7 +64,7 @@ describe("setupWakeLock", () => {
     await flush();
     expect(request).toHaveBeenCalledTimes(2);
 
-    // The listener is one-shot.
+    // The listener is one-shot: still denied, yet a second gesture does not ask again.
     window.dispatchEvent(new Event("pointerdown"));
     await flush();
     expect(request).toHaveBeenCalledTimes(2);

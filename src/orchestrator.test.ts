@@ -408,18 +408,38 @@ describe("startApp", () => {
     expect(queryByRole(app(), "button", { name: "表示を戻す" })).toBeNull();
   });
 
-  it("the prompt's undo does not bring it back once a GPS fix has landed", async () => {
+  it("the restore button brings a closed prompt back and focuses its main button", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     startApp();
 
     await user.click(getByRole(app(), "button", { name: "位置情報の案内を閉じる" }));
+    await vi.advanceTimersByTimeAsync(6000); // the undo toast is gone
     await user.click(getByRole(app(), "button", { name: "表示を戻す" }));
+
+    expect(app().querySelector<HTMLElement>(".location-prompt")!.hidden).toBe(false);
+    expect(document.activeElement).toBe(getByRole(app(), "button", { name: "位置情報を使う" }));
+    expect(queryByRole(app(), "button", { name: "表示を戻す" })).toBeNull();
+    expect(localStorage.getItem("lumen-bloom:location-prompt-dismissed")).toBeNull();
+  });
+
+  it("a GPS fix that lands while the prompt's undo toast is open keeps the prompt gone", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    startApp();
+
+    // Request in flight, then the user closes the pill with × (undo toast opens).
     await user.click(getByRole(app(), "button", { name: "位置情報を使う" }));
+    await user.click(getByRole(app(), "button", { name: "位置情報の案内を閉じる" }));
+    expect(toastText()).toBe("位置情報の案内を隠しました");
+    expect(getByRole(app(), "button", { name: "表示を戻す" })).toBeTruthy();
+
     getCurrentPosition.mock.calls[0][0]({ coords: { latitude: 1, longitude: 2 } });
     await vi.advanceTimersByTimeAsync(0);
     expect(app().querySelector<HTMLElement>(".location-prompt")!.hidden).toBe(true);
+    // The location is known now: the restore button has nothing to bring back.
+    expect(queryByRole(app(), "button", { name: "表示を戻す" })).toBeNull();
 
-    // The toast from the × is still open (6 s window).
+    // The toast from the × is still open (6 s window) — its undo must not
+    // re-offer a location the app already has.
     await user.click(getByRole(app(), "button", { name: "元に戻す" }));
     expect(app().querySelector<HTMLElement>(".location-prompt")!.hidden).toBe(true);
     expect(queryByRole(app(), "button", { name: "表示を戻す" })).toBeNull();

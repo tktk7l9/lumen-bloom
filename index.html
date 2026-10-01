@@ -30,14 +30,22 @@
     <meta name="twitter:image" content="https://lumen-bloom.saitotakuya0719.workers.dev/ogp.png" />
   </head>
   <body>
-    <canvas id="scene"></canvas>
-    <div id="loading" class="loading" aria-hidden="true">
-      <div class="loading-glow"></div>
-      <p class="loading-text">光を集めています…</p>
-    </div>
-    <div class="wordmark">Lumen Bloom</div>
-    <div id="app"></div>
-    <noscript>このアプリは JavaScript を有効にしてご利用ください。</noscript>
+    <header class="wordmark"><h1>Lumen Bloom</h1></header>
+    <main>
+      <canvas
+        id="scene"
+        role="img"
+        aria-label="今週の花を生けたガラスの花瓶。現在地の太陽と天気をそのまま映す3Dシーン"
+      ></canvas>
+      <div id="loading" class="loading">
+        <div class="loading-glow" aria-hidden="true"></div>
+        <p class="loading-text" role="status">光を集めています…</p>
+      </div>
+      <div id="app"></div>
+      <noscript>
+        <p class="noscript">このアプリは JavaScript を有効にしてご利用ください。</p>
+      </noscript>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

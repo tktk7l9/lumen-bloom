@@ -29,8 +29,10 @@ export function createInfoCard(
     { type: "button", class: "close", "aria-label": "花の説明を閉じる" },
     "×",
   );
+  // A named <section> (region landmark) rather than <aside>: it lives inside
+  // <main>, where a complementary landmark must not be nested (SHIG 94).
   const node = el(
-    "aside",
+    "section",
     { class: "info-card", hidden: true, "aria-labelledby": "info-card-title" },
     closeButton,
     title,

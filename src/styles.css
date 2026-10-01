@@ -235,6 +235,25 @@ body {
   pointer-events: none;
 }
 
+/* No-JS notice. Positioned like the location prompt so the wordmark pill
+   (z-index 1, top-left) does not cover it, and inside <main> so it is not
+   content outside landmarks (SHIG 94). */
+.noscript {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1.5rem;
+  z-index: 1;
+  margin: 0 auto;
+  max-width: 28rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 14px;
+  background: rgba(10, 12, 20, 0.72);
+  color: #cbd3e6;
+  font: 0.8rem/1.4 system-ui, sans-serif;
+  text-align: center;
+}
+
 .wordmark h1 {
   margin: 0;
   font: inherit;

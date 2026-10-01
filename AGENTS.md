@@ -16,7 +16,8 @@ A water-filled glass vase with sunflowers sits in a room corner (floor + two wal
 
 ## Testing policy (lib 100%)
 
-- `src/engine/**` has a 100% coverage gate (`vitest.config.ts`). `src/scene/**` and `src/ui/**` are excluded as the Three.js/DOM layers.
+- `src/engine/**` has a 100% coverage gate (`vitest.config.ts`). `src/scene/**` is excluded as the Three.js/WebGL layer.
+- `src/ui/**` and `src/orchestrator.ts` are covered by behavioural jsdom tests (Testing Library + user-event; gate 98%/95% branches in `vitest.config.ts`). Each DOM test file opts into jsdom with a `// @vitest-environment jsdom` docblock; engine tests stay in node. Query by role/accessible name and assert visible text, `hidden` state, focus and `localStorage` — no snapshot tests. `src/orchestrator.test.ts` mocks `./scene/stage` (the Three.js chunk) and fakes timers including `performance` and `requestAnimationFrame` so the frame loop's `dt` is on the same clock; `startApp()` has no teardown, so the test records the document/window listeners it adds and removes them after each test.
 - Sun position calculation (`src/engine/astro/**`, ported from skydial) is checked against fixtures (`__fixtures__/ephemeris.ts`, source comments required): NOAA Solar Calculator, USNO, JPL Horizons. Tolerance ±1 min / ±0.1°.
 - Weather mapping (`src/engine/weather/mapping.ts`) is tested table-driven over every WMO weather code category plus the unknown-code fallback.
 - The weather client (`src/engine/weather/client.ts`) takes `fetchImpl` via DI and covers the four paths success / HTTP error / network exception / JSON parse failure with mocks. Verify the real Open-Meteo response shape once against the live API during development (mocks alone can't catch drift).

@@ -29,6 +29,7 @@ describe("createPermissionPrompt", () => {
 
     prompt.show(vi.fn());
     expect(pill().hidden).toBe(false);
+    expect(getByRole(mount, "group", { name: "位置情報の案内" })).toBe(pill());
     expect(getByText(mount, /いまは東京の太陽で表示しています/)).toBeTruthy();
     expect(getByRole(mount, "button", { name: "位置情報を使う" })).toBeTruthy();
   });

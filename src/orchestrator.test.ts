@@ -194,7 +194,7 @@ describe("startApp", () => {
     startApp();
 
     const expected = arrangementForDate(NOW, TOKYO.lat);
-    expect(getByRole(app(), "complementary", { name: expected.name }).textContent).toContain(
+    expect(getByRole(app(), "region", { name: expected.name }).textContent).toContain(
       expected.description,
     );
     expect(hud().textContent).toMatch(/^\d{2}:\d{2} · /);
@@ -301,10 +301,10 @@ describe("startApp", () => {
     startApp();
 
     await user.click(getByRole(app(), "button", { name: "花の説明を閉じる" }));
-    expect(queryByRole(app(), "complementary")).toBeNull();
+    expect(queryByRole(app(), "region")).toBeNull();
     await user.click(getByRole(app(), "button", { name: "元に戻す" }));
 
-    expect(getByRole(app(), "complementary")).toBeTruthy();
+    expect(getByRole(app(), "region")).toBeTruthy();
     expect(document.activeElement).toBe(getByRole(app(), "button", { name: "花の説明を閉じる" }));
     expect(queryByRole(app(), "button", { name: "表示を戻す" })).toBeNull();
     expect(localStorage.getItem("lumen-bloom:info-hidden")).toBeNull();
@@ -316,7 +316,7 @@ describe("startApp", () => {
 
     await user.click(getByRole(app(), "button", { name: "花の説明を閉じる" }));
     expect(toastText()).toBe("花の説明を隠しました");
-    expect(queryByRole(app(), "complementary")).toBeNull();
+    expect(queryByRole(app(), "region")).toBeNull();
 
     await vi.advanceTimersByTimeAsync(6000);
     expect(toastText()).toBeNull();
@@ -325,7 +325,7 @@ describe("startApp", () => {
     expect(document.activeElement).toBe(restore);
 
     await user.click(restore);
-    expect(getByRole(app(), "complementary")).toBeTruthy();
+    expect(getByRole(app(), "region")).toBeTruthy();
     expect(document.activeElement).toBe(getByRole(app(), "button", { name: "花の説明を閉じる" }));
     expect(queryByRole(app(), "button", { name: "表示を戻す" })).toBeNull();
   });
@@ -342,7 +342,7 @@ describe("startApp", () => {
     await user.click(getByRole(app(), "button", { name: "表示を戻す" }));
 
     expect(hud().hidden).toBe(false);
-    expect(getByRole(app(), "complementary")).toBeTruthy();
+    expect(getByRole(app(), "region")).toBeTruthy();
     expect(getByRole(app(), "button", { name: "位置情報を使う" })).toBeTruthy();
     expect(document.activeElement).toBe(hud());
   });
@@ -370,7 +370,7 @@ describe("startApp", () => {
     expect(String(fetchMock.mock.calls[0][0])).toContain("latitude=-33.8700");
     // Southern hemisphere: the seasonal rotation shifts by six months.
     const expected = arrangementForDate(NOW, -33.87);
-    expect(getByRole(app(), "complementary", { name: expected.name })).toBeTruthy();
+    expect(getByRole(app(), "region", { name: expected.name })).toBeTruthy();
     expect(queryByRole(app(), "button", { name: "表示を戻す" })).toBeNull();
   });
 
@@ -465,7 +465,7 @@ describe("startApp", () => {
 
     expect(app().querySelector(".location-prompt")).toBeNull();
     expect(hud().hidden).toBe(true);
-    expect(queryByRole(app(), "complementary")).toBeNull();
+    expect(queryByRole(app(), "region")).toBeNull();
     expect(queryByRole(app(), "button", { name: "表示を戻す" })).toBeNull();
     expect(String(fetchMock.mock.calls[0][0])).toContain("longitude=151.2100");
 

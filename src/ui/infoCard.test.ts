@@ -19,11 +19,15 @@ afterEach(() => {
 });
 
 describe("createInfoCard", () => {
-  it("renders the flower name and description as a labelled complementary region", () => {
+  it("renders the flower name and description as a labelled region landmark", () => {
     const card = createInfoCard(mount, null, vi.fn());
     card.render("ひまわり", "夏の花。");
 
-    const region = getByRole(mount, "complementary", { name: "ひまわり" });
+    const region = getByRole(mount, "region", { name: "ひまわり" });
+    // A <section>, not <aside>: the card lives inside <main>, where a
+    // complementary landmark must not be nested.
+    expect(region.tagName).toBe("SECTION");
+    expect(queryByRole(mount, "complementary")).toBeNull();
     expect(region.textContent).toContain("夏の花。");
     expect(getByRole(region, "button", { name: "花の説明を閉じる" })).toBeTruthy();
   });
@@ -36,7 +40,7 @@ describe("createInfoCard", () => {
     expect(mount.textContent).not.toContain("別の説明");
 
     card.render("チューリップ", "春の花。");
-    expect(getByRole(mount, "complementary", { name: "チューリップ" }).textContent).toContain(
+    expect(getByRole(mount, "region", { name: "チューリップ" }).textContent).toContain(
       "春の花。",
     );
   });
@@ -49,7 +53,7 @@ describe("createInfoCard", () => {
 
     await user.click(getByRole(mount, "button", { name: "花の説明を閉じる" }));
 
-    expect(queryByRole(mount, "complementary")).toBeNull();
+    expect(queryByRole(mount, "region")).toBeNull();
     expect(localStorage.getItem(DISMISS_KEY)).toBe("1");
     expect(onUserHide).toHaveBeenCalledTimes(1);
     expect(card.isUserHidden()).toBe(true);
@@ -61,12 +65,12 @@ describe("createInfoCard", () => {
     expect(card.isUserHidden()).toBe(true);
 
     card.render("ひまわり", "夏の花。");
-    expect(queryByRole(mount, "complementary")).toBeNull();
+    expect(queryByRole(mount, "region")).toBeNull();
 
     card.show();
     expect(card.isUserHidden()).toBe(false);
     expect(localStorage.getItem(DISMISS_KEY)).toBeNull();
-    expect(getByRole(mount, "complementary", { name: "ひまわり" }).textContent).toContain(
+    expect(getByRole(mount, "region", { name: "ひまわり" }).textContent).toContain(
       "夏の花。",
     );
   });
@@ -81,7 +85,7 @@ describe("createInfoCard", () => {
 
   it("?info=0 hides without a user choice; ?info=1 overrides a stored dismissal", () => {
     const forcedOff = createInfoCard(mount, false, vi.fn());
-    expect(queryByRole(mount, "complementary")).toBeNull();
+    expect(queryByRole(mount, "region")).toBeNull();
     expect(forcedOff.isUserHidden()).toBe(false);
     // One card per page (its title id is fixed), so start over for the next one.
     mount.replaceChildren();
@@ -89,7 +93,7 @@ describe("createInfoCard", () => {
     localStorage.setItem(DISMISS_KEY, "1");
     const forcedOn = createInfoCard(mount, true, vi.fn());
     forcedOn.render("ひまわり", "夏の花。");
-    expect(getByRole(mount, "complementary", { name: "ひまわり" })).toBeTruthy();
+    expect(getByRole(mount, "region", { name: "ひまわり" })).toBeTruthy();
     expect(forcedOn.isUserHidden()).toBe(false);
   });
 

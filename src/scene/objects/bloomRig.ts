@@ -67,7 +67,8 @@ const DEFAULT_BUD_RADIUS_FRAC = 0.22;
 const DEFAULT_BUD_LENGTH_FRAC = 0.4;
 const DEFAULT_BUD_TILT_DEG = 86;
 
-function ringPose(
+/** Pose of petal `k` in a ring radiating from the head axis (+Y up = face). */
+export function ringPose(
   k: number,
   count: number,
   ringRadius: number,
@@ -76,8 +77,7 @@ function ringPose(
   lengthM: number,
   angleOffsetRad: number,
 ): InstancePose {
-  // Mirrors addRadialRing's own basis math (flowers.ts) exactly, just
-  // packaged as a pose instead of an immediately-applied matrix.
+  // Basis: local Y (petal length) → radial+tilt, local Z (cup normal) → face.
   const angle = (k / count) * Math.PI * 2 + angleOffsetRad;
   const cosA = Math.cos(angle);
   const sinA = Math.sin(angle);

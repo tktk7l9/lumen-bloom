@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "現在地の太陽位置と天気をリアルタイムに映す、プロシージャル花瓶の3Dウォールペーパー",
+  "description": "A procedural 3D vase wallpaper that mirrors the real-time sun position and weather at your location",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

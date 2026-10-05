@@ -14,6 +14,7 @@ import {
   addAnimatedRadialRing,
   addFloorDebris,
   attachBloomCycle,
+  ringPose,
   scaleBloom,
 } from "./bloomRig";
 
@@ -124,7 +125,7 @@ function createSharedAssets(): SharedAssets {
 }
 
 /** Instanced ring of petal-grid surfaces radiating from the head axis (+Y up = face). */
-export function addRadialRing(
+function addRadialRing(
   head: THREE.Group,
   geometry: THREE.BufferGeometry,
   material: THREE.Material,
@@ -141,23 +142,9 @@ export function addRadialRing(
   const mesh = new THREE.InstancedMesh(geometry, material, opts.count);
   mesh.castShadow = true;
   const matrix = new THREE.Matrix4();
-  const dir = new THREE.Vector3();
-  const side = new THREE.Vector3();
-  const normal = new THREE.Vector3();
-  const tilt = (opts.tiltDeg * Math.PI) / 180;
-
   for (let k = 0; k < opts.count; k++) {
-    const angle = (k / opts.count) * Math.PI * 2 + opts.angleOffsetRad;
-    const cosA = Math.cos(angle);
-    const sinA = Math.sin(angle);
-    // Basis: local Y (petal length) → radial+tilt, local Z (cup normal) → face.
-    dir.set(cosA * Math.cos(tilt), Math.sin(tilt), sinA * Math.cos(tilt));
-    side.set(-sinA, 0, cosA);
-    normal.crossVectors(side, dir);
-    matrix.makeBasis(side, dir, normal);
-    matrix.scale(new THREE.Vector3(opts.lengthM, opts.lengthM, opts.lengthM));
-    matrix.setPosition(cosA * opts.ringRadius, opts.ringY, sinA * opts.ringRadius);
-    mesh.setMatrixAt(k, matrix);
+    const pose = ringPose(k, opts.count, opts.ringRadius, opts.ringY, opts.tiltDeg, opts.lengthM, opts.angleOffsetRad);
+    mesh.setMatrixAt(k, matrix.compose(pose.position, pose.quaternion, pose.scale));
     if (opts.tint) mesh.setColorAt(k, opts.tint);
   }
   mesh.instanceMatrix.needsUpdate = true;

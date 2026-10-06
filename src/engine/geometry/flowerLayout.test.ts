@@ -57,6 +57,37 @@ describe("layoutBouquet", () => {
     }
   });
 
+  it("droopScale 0 keeps the free stretch straight at the pivot angle", () => {
+    for (const stem of layoutBouquet({ stemCount: 6, seed: 11, droopScale: 0 })) {
+      const [foot, rim, , , tip] = stem.controlPoints;
+      // Foot → rim and rim → tip are collinear: a rigid stem leaning on the rim.
+      const a = [rim[0] - foot[0], rim[1] - foot[1], rim[2] - foot[2]];
+      const b = [tip[0] - rim[0], tip[1] - rim[1], tip[2] - rim[2]];
+      const cos =
+        (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (Math.hypot(...a) * Math.hypot(...b));
+      expect(cos).toBeCloseTo(1, 6);
+    }
+  });
+
+  it("freeLengthScale stretches the above-rim stretch without touching the in-vase part", () => {
+    const base = layoutBouquet({ stemCount: 3, seed: 4 });
+    const tall = layoutBouquet({ stemCount: 3, seed: 4, freeLengthScale: 2 });
+    base.forEach((stem, i) => {
+      expect(tall[i].controlPoints[0]).toEqual(stem.controlPoints[0]);
+      expect(tall[i].controlPoints[1]).toEqual(stem.controlPoints[1]);
+      const length = (s: typeof stem): number => {
+        let sum = 0;
+        for (let k = 2; k < s.controlPoints.length; k++) {
+          const p = s.controlPoints[k - 1];
+          const q = s.controlPoints[k];
+          sum += Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
+        }
+        return sum;
+      };
+      expect(length(tall[i])).toBeGreaterThan(length(stem) * 1.5);
+    });
+  });
+
   it("keeps every head above the rim at a plausible height", () => {
     const rimY = DEFAULT_BOUQUET.vaseRimYM;
     for (const stem of layoutBouquet({ seed: 9 })) {

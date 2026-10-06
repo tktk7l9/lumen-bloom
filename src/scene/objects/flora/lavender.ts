@@ -14,12 +14,56 @@ import {
 import { attachBreeze, gridToGeometry } from "../flowers";
 
 const UP = new THREE.Vector3(0, 1, 0);
-const BUDS_PER_SPIKE = 22;
 // Buds have no petal to angle open — they swell in place instead, each on
 // its own seeded position along the spike (organic filling-out, not one
 // rigid whole-head scale-up).
 const BUD_SCALE_FRAC = 0.35;
 const LEAF_BUD_FRAC = 0.4;
+
+interface SpikeStyle {
+  budsPerSpike: number;
+  spikeLengthM: number;
+  budRadiusM: number;
+  /** Bud height as a multiple of its radius (lavender buds are oblong, muscari bells squat). */
+  budElongation: number;
+  /** How much smaller the buds get toward the tip (0 = uniform). */
+  taper: number;
+  stemRadiusM: number;
+  stemHex: number;
+  leafScale: number;
+  droopScale: number;
+  freeLengthScale: number;
+}
+
+// One machine, two flowers: a lavender spike is long, loose and oblong;
+// a muscari raceme is a short, fat, tapering bunch of round bells on a
+// stem a third as tall.
+const STYLES = {
+  lavender: {
+    budsPerSpike: 22,
+    spikeLengthM: 0.05,
+    budRadiusM: 0.0022,
+    budElongation: 1.5,
+    taper: 0,
+    stemRadiusM: 0.0016,
+    stemHex: 0x5f7a52,
+    leafScale: 0.55,
+    droopScale: 1,
+    freeLengthScale: 1,
+  },
+  muscari: {
+    budsPerSpike: 30,
+    spikeLengthM: 0.03,
+    budRadiusM: 0.0027,
+    budElongation: 1.05,
+    taper: 0.5,
+    stemRadiusM: 0.002,
+    stemHex: 0x6f8f5a,
+    leafScale: 0.7,
+    droopScale: 0.3,
+    freeLengthScale: 0.45,
+  },
+} satisfies Record<string, SpikeStyle>;
 
 export interface LavenderOptions {
   paletteHex: readonly number[];
@@ -30,14 +74,18 @@ export interface LavenderOptions {
   vaseBaseRadiusM: number;
 }
 
-/** Slender stems ending in spikes of tiny purple buds. */
-export function createLavenderGroup(opts: LavenderOptions): THREE.Group {
-  const stems = layoutBouquet(opts);
+/** Slender stems ending in spikes of tiny buds. */
+function createGroup(opts: LavenderOptions, style: SpikeStyle): THREE.Group {
+  const stems = layoutBouquet({
+    ...opts,
+    droopScale: style.droopScale,
+    freeLengthScale: style.freeLengthScale,
+  });
   const group = new THREE.Group();
   const stemGroups: THREE.Group[] = [];
   const rand = mulberry32(opts.seed + 51);
 
-  const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x5f7a52, roughness: 0.75 });
+  const stemMaterial = new THREE.MeshStandardMaterial({ color: style.stemHex, roughness: 0.75 });
   const budGeometry = new THREE.SphereGeometry(1, 6, 5);
   const budMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.65 });
   const leafGeometry = gridToGeometry(
@@ -60,7 +108,7 @@ export function createLavenderGroup(opts: LavenderOptions): THREE.Group {
       stem.controlPoints.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
     );
     const stemMesh = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, 20, 0.0016, 5, false),
+      new THREE.TubeGeometry(curve, 20, style.stemRadiusM, 5, false),
       stemMaterial,
     );
     stemMesh.castShadow = true;
@@ -70,7 +118,7 @@ export function createLavenderGroup(opts: LavenderOptions): THREE.Group {
       const mesh = new THREE.Mesh(leafGeometry, leafMaterial);
       mesh.castShadow = true;
       mesh.position.copy(curve.getPointAt(leaf.t));
-      mesh.scale.setScalar(leaf.lengthM * 0.55);
+      mesh.scale.setScalar(leaf.lengthM * style.leafScale);
       const az = (leaf.azimuthDeg * Math.PI) / 180;
       const dir = new THREE.Vector3(Math.cos(az) * 0.6, 0.5, Math.sin(az) * 0.6).normalize();
       const side = new THREE.Vector3().crossVectors(UP, dir).normalize();
@@ -87,30 +135,28 @@ export function createLavenderGroup(opts: LavenderOptions): THREE.Group {
     const tint = new THREE.Color(
       opts.paletteHex[Math.floor(stem.colorSeed * opts.paletteHex.length)] ?? 0x8a76c9,
     );
-    const buds = new THREE.InstancedMesh(budGeometry, budMaterial, BUDS_PER_SPIKE);
+    const buds = new THREE.InstancedMesh(budGeometry, budMaterial, style.budsPerSpike);
     buds.castShadow = true;
     const tip = curve.getPointAt(1);
     const tangent = curve.getTangentAt(0.98).normalize();
     const openPoses: InstancePose[] = [];
     const budPoses: InstancePose[] = [];
-    const shedAt = new Float32Array(BUDS_PER_SPIKE);
+    const shedAt = new Float32Array(style.budsPerSpike);
     const identity = new THREE.Quaternion();
-    for (let k = 0; k < BUDS_PER_SPIKE; k++) {
-      const along = (k / BUDS_PER_SPIKE) * 0.05 - 0.012;
-      const jitterR = 0.0022 + rand() * 0.0012;
+    for (let k = 0; k < style.budsPerSpike; k++) {
+      const frac = k / style.budsPerSpike;
+      const along = frac * style.spikeLengthM - style.spikeLengthM * 0.24;
+      const jitterR = style.budRadiusM * (1 + rand() * 0.55);
       const a = rand() * Math.PI * 2;
-      const s = 0.0022 + rand() * 0.0008;
+      const s = style.budRadiusM * (1 + rand() * 0.36) * (1 - style.taper * frac);
       const position = new THREE.Vector3(
         tip.x + tangent.x * along + Math.cos(a) * jitterR,
         tip.y + tangent.y * along + (rand() - 0.5) * 0.002,
         tip.z + tangent.z * along + Math.sin(a) * jitterR,
       );
-      openPoses.push({ position, quaternion: identity, scale: new THREE.Vector3(s, s * 1.5, s) });
-      budPoses.push({
-        position,
-        quaternion: identity,
-        scale: new THREE.Vector3(s, s * 1.5, s).multiplyScalar(BUD_SCALE_FRAC),
-      });
+      const scale = new THREE.Vector3(s, s * style.budElongation, s);
+      openPoses.push({ position, quaternion: identity, scale });
+      budPoses.push({ position, quaternion: identity, scale: scale.clone().multiplyScalar(BUD_SCALE_FRAC) });
       shedAt[k] = rand();
       color.copy(tint).offsetHSL(0, 0, (rand() - 0.5) * 0.08);
       buds.setColorAt(k, color);
@@ -150,3 +196,6 @@ export function createLavenderGroup(opts: LavenderOptions): THREE.Group {
   attachBloomCycle(group, bloomElements);
   return group;
 }
+
+export const createLavenderGroup = (o: LavenderOptions): THREE.Group => createGroup(o, STYLES.lavender);
+export const createMuscariGroup = (o: LavenderOptions): THREE.Group => createGroup(o, STYLES.muscari);

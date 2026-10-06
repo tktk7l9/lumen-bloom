@@ -42,10 +42,12 @@ interface DaisyStyle {
   petalLenFrac: number;
   stemRadiusM: number;
   leafWidthM: number;
+  /** Cut poppies come without leaves — the layout's stem leaves are skipped. */
+  leafless?: boolean;
 }
 
-// One machine, four flowers: cosmos, anemone, gerbera, and margaret differ
-// only in petal proportions, ring stacking, and the center disc.
+// One machine, six flowers: cosmos, anemone, gerbera, margaret, poppy and
+// kikyou differ only in petal proportions, ring stacking, and the center disc.
 const STYLES = {
   cosmos: {
     petal: { widthM: 0.52, cupM: 0.05, bendM: 0.04 },
@@ -89,6 +91,34 @@ const STYLES = {
     petalLenFrac: 0.38,
     stemRadiusM: 0.0024,
     leafWidthM: 0.18,
+  },
+  // Iceland poppy: four broad crinkled petals in two crossed pairs forming
+  // a shallow bowl around a green-yellow boss, on hair-thin bare stems.
+  poppy: {
+    petal: { widthM: 1.05, cupM: 0.2, bendM: -0.06 },
+    rings: [
+      { count: 2, tiltDeg: 26, lenFrac: 1 },
+      { count: 2, tiltDeg: 40, lenFrac: 0.92 },
+    ],
+    discFrac: 0.2,
+    discColorCenterHex: 0x9bb23a,
+    discColorRimHex: 0xe8c63a,
+    petalLenFrac: 0.42,
+    stemRadiusM: 0.0022,
+    leafWidthM: 0.2,
+    leafless: true,
+  },
+  // Balloon flower: five fused pointed lobes open into a flat star; the
+  // overlap of wide petal bases reads as the fused corolla.
+  kikyou: {
+    petal: { widthM: 0.9, cupM: 0.12, bendM: 0.04 },
+    rings: [{ count: 5, tiltDeg: 24, lenFrac: 1 }],
+    discFrac: 0.13,
+    discColorCenterHex: 0xe9e4f2,
+    discColorRimHex: 0xcfc4e8,
+    petalLenFrac: 0.52,
+    stemRadiusM: 0.0026,
+    leafWidthM: 0.3,
   },
 } satisfies Record<string, DaisyStyle>;
 
@@ -139,7 +169,7 @@ function createGroup(opts: DaisyOptions, style: DaisyStyle): THREE.Group {
     stemMesh.castShadow = true;
     stemGroup.add(stemMesh);
 
-    for (const leaf of stem.leaves) {
+    for (const leaf of style.leafless ? [] : stem.leaves) {
       const mesh = new THREE.Mesh(leafGeometry, leafMaterial);
       mesh.castShadow = true;
       mesh.position.copy(curve.getPointAt(leaf.t));
@@ -233,3 +263,5 @@ export const createCosmosGroup = (o: DaisyOptions): THREE.Group => createGroup(o
 export const createAnemoneGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.anemone);
 export const createGerberaGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.gerbera);
 export const createMargaretGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.margaret);
+export const createPoppyGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.poppy);
+export const createKikyouGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.kikyou);

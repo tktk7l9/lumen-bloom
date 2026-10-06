@@ -63,6 +63,37 @@ export function addAnimatedInstances(
   return handle;
 }
 
+/**
+ * Pose with local +Y (a petal's length axis) along `dir` and local +Z (its
+ * cup/face normal) as close to `faceHint` as the right angle allows. With
+ * the petal-grid convention — a positive bend pushes the tip toward −Z —
+ * this makes "which way the tip curls" explicit: pass the flower's axis
+ * as `faceHint` for tepals that recurve away from it, or UP for strands
+ * that sag under their own weight.
+ */
+export function orientedPose(
+  position: THREE.Vector3,
+  dir: THREE.Vector3,
+  faceHint: THREE.Vector3,
+  scale: THREE.Vector3 | number,
+): InstancePose {
+  const y = dir.clone().normalize();
+  const z = faceHint.clone().addScaledVector(y, -faceHint.dot(y));
+  if (z.lengthSq() < 1e-8) {
+    // faceHint is parallel to dir: any perpendicular will do.
+    z.set(1, 0, 0).addScaledVector(y, -y.x);
+    if (z.lengthSq() < 1e-8) z.set(0, 0, 1).addScaledVector(y, -y.z);
+  }
+  z.normalize();
+  const x = new THREE.Vector3().crossVectors(y, z);
+  const basis = new THREE.Matrix4().makeBasis(x, y, z);
+  return {
+    position: position.clone(),
+    quaternion: new THREE.Quaternion().setFromRotationMatrix(basis),
+    scale: typeof scale === "number" ? new THREE.Vector3(scale, scale, scale) : scale.clone(),
+  };
+}
+
 const DEFAULT_BUD_RADIUS_FRAC = 0.22;
 const DEFAULT_BUD_LENGTH_FRAC = 0.4;
 const DEFAULT_BUD_TILT_DEG = 86;

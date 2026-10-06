@@ -769,9 +769,9 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
       "秋の訪れを香りで告げる花木。橙色の小花は一週間ほどで散り、地面を金色に染める。日本にあるのはほとんどが雄株で、実を結ぶことはまずない。花言葉は「謙虚」「気高い人」。",
     flora: {
       kind: "osmanthus",
-      paletteHex: [0xf0962a, 0x2f5a2c],
+      paletteHex: [0xe9781c, 0x2a4a26],
       branchHex: 0x5a4c3e,
-      stemCount: 3,
+      stemCount: 4,
       seed: 49,
     },
     vase: {

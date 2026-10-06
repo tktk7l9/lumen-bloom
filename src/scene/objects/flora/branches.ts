@@ -8,10 +8,12 @@ import {
   addAnimatedInstances,
   addFloorDebris,
   attachBloomCycle,
+  orientedPose,
 } from "../bloomRig";
 import { attachBreeze, gridToGeometry } from "../flowers";
 
 const UP = new THREE.Vector3(0, 1, 0);
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
 // Blossom petals splay open around the adornment spot's own outward normal —
 // same u/v/normal mixing as the built shape, weighted differently for a
 // folded bud vs the flat splayed-open look.
@@ -29,16 +31,13 @@ const LEAF_BUD_FRAC = 0.4;
 export type BranchAdornment =
   | { type: "blossom"; petalHex: number; centerHex: number }
   | { type: "leaf"; leafHexes: readonly number[] }
-  | {
-      type: "berry";
-      berryHex: number;
-      leafHex: number;
-      /** Tiny flower clusters (osmanthus) instead of nanten-sized berries. */
-      berryRadiusM?: number;
-      berriesPerCluster?: number;
-      /** Fraction of spots that carry leaves rather than clusters (default 1/3). */
-      leafy?: boolean;
-    }
+  | { type: "berry"; berryHex: number; leafHex: number }
+  /**
+   * Kinmokusei (fragrant olive): glossy elliptic evergreen leaves in
+   * opposite, decussate pairs at close nodes, with a tuft of tiny
+   * four-petalled flowers packed into each leaf axil.
+   */
+  | { type: "osmanthus"; flowerHex: number; leafHex: number }
   /**
    * Camellia family: a few large single blooms with a stamen column among
    * glossy evergreen leaves. `cup` is tsubaki (petals rise around the
@@ -100,8 +99,83 @@ function spotsAlong(
   return spots;
 }
 
+interface LeafNode {
+  position: THREE.Vector3;
+  tangent: THREE.Vector3;
+  /** Unit direction of the node's first leaf, perpendicular to the branch; its partner sits opposite. */
+  out: THREE.Vector3;
+  /** The youngest pair at the twig tip — leaves only, no flowers. */
+  tip: boolean;
+}
+
 /**
- * Cut branches (ume plum, sakura cherry, momiji maple, nanten, camellia): a leaning main branch with two side
+ * Evenly spaced nodes with opposite, decussate leaf pairs (each pair turned
+ * 90° from the one below), as on osmanthus and other Oleaceae twigs.
+ */
+function decussateNodes(
+  curve: THREE.CatmullRomCurve3,
+  fromT: number,
+  spacingM: number,
+  rand: () => number,
+): LeafNode[] {
+  const span = curve.getLength() * (1 - fromT);
+  const count = Math.max(2, Math.round(span / spacingM));
+  const phase = rand() * Math.PI;
+  const nodes: LeafNode[] = [];
+  for (let i = 0; i < count; i++) {
+    const t = Math.min(fromT + (1 - fromT) * ((i + 0.3 + rand() * 0.25) / count), 0.985);
+    const position = curve.getPointAt(t);
+    const tangent = curve.getTangentAt(t);
+    const u = new THREE.Vector3()
+      .crossVectors(Math.abs(tangent.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : UP, tangent)
+      .normalize();
+    const v = new THREE.Vector3().crossVectors(tangent, u);
+    const angle = phase + i * (Math.PI / 2) + (rand() - 0.5) * 0.3;
+    const out = u.multiplyScalar(Math.cos(angle)).addScaledVector(v, Math.sin(angle)).normalize();
+    nodes.push({ position, tangent, out, tip: i === count - 1 });
+  }
+  return nodes;
+}
+
+/**
+ * One tiny four-petalled osmanthus flower lying in the XY plane, facing +Z:
+ * four rounded diamond petals cupped slightly toward the face, colored
+ * deeper at the throat (instance color supplies the hue).
+ */
+function osmanthusFlowerGeometry(): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const throat = 0.72;
+  for (let k = 0; k < 4; k++) {
+    const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    const at = (along: number, across: number, z: number): number[] => [
+      c * along - s * across,
+      s * along + c * across,
+      z,
+    ];
+    const center = at(0, 0, -0.05);
+    const left = at(0.5, -0.32, 0.12);
+    const tip = at(1, 0, 0.3);
+    const right = at(0.5, 0.32, 0.12);
+    positions.push(...center, ...left, ...tip, ...center, ...tip, ...right);
+    for (const shade of [throat, 1, 1, throat, 1, 1]) colors.push(shade, shade * 0.97, shade * 0.92);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+const OSMANTHUS_NODE_SPACING_M = 0.022;
+const OSMANTHUS_FLOWERS_PER_AXIL = 6;
+const OSMANTHUS_FLOWER_M = 0.0047;
+const OSMANTHUS_BUD_FRAC = 0.4;
+
+/**
+ * Cut branches (ume plum, sakura cherry, momiji maple, nanten, camellia, osmanthus): a leaning main branch with two side
  * shoots per stem, adorned with instanced blossoms, leaves, or berry
  * clusters along the upper reaches.
  */
@@ -137,10 +211,17 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
   // Camellia-only assets: broad rounded petals and glossy elliptic leaves.
   const camellia = opts.adorn.type === "camellia" ? opts.adorn : null;
   const berry = opts.adorn.type === "berry" ? opts.adorn : null;
-  // Tiny flower clusters (osmanthus) are many and small: a coarser sphere
-  // keeps the triangle count in line with the other kinds.
-  const berryGeometry =
-    berry && (berry.berryRadiusM ?? 0.0034) < 0.0025 ? new THREE.SphereGeometry(1, 5, 4) : sphereGeometry;
+  const osmanthus = opts.adorn.type === "osmanthus" ? opts.adorn : null;
+  // Osmanthus: narrow elliptic leaves, dark at the midrib base, and the
+  // tiny flower shared by the axil tufts and the fallen carpet on the floor.
+  const osmanthusLeafGeometry = osmanthus
+    ? gridToGeometry(
+        petalGrid({ lengthM: 1, widthM: 0.5, segmentsU: 4, segmentsV: 2, cupM: 0.03, bendM: -0.06 }),
+        new THREE.Color(osmanthus.leafHex).multiplyScalar(0.6).getHex(),
+        osmanthus.leafHex,
+      )
+    : leafGeometry;
+  const osmanthusFlowerGeometryShared = osmanthus ? osmanthusFlowerGeometry() : petalGeometry;
   const camelliaPetalGeometry = camellia
     ? gridToGeometry(
         petalGrid({ lengthM: 1, widthM: 0.95, segmentsU: 6, segmentsV: 5, cupM: 0.22, bendM: -0.08 }),
@@ -245,9 +326,10 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
     mainMesh.castShadow = true;
     stemGroup.add(mainMesh);
 
-    // Two side shoots off the upper half of the main branch.
+    // Side shoots off the upper half of the main branch (osmanthus twigs
+    // are bushier: three).
     const curves: THREE.CatmullRomCurve3[] = [main];
-    for (const shootT of [0.58, 0.8]) {
+    for (const shootT of osmanthus ? [0.5, 0.66, 0.82] : [0.58, 0.8]) {
       const start = main.getPointAt(shootT);
       const tangent = main.getTangentAt(shootT);
       const spread = rand() * Math.PI * 2;
@@ -259,10 +341,10 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
         .clone()
         .multiplyScalar(Math.cos(spread))
         .addScaledVector(v, Math.sin(spread))
-        .addScaledVector(tangent, 1.2)
+        .addScaledVector(tangent, osmanthus ? 0.75 : 1.2)
         .addScaledVector(UP, 0.4)
         .normalize();
-      const len = 0.09 + rand() * 0.06;
+      const len = (osmanthus ? 0.11 : 0.09) + rand() * 0.06;
       const child = new THREE.CatmullRomCurve3([
         start,
         start.clone().addScaledVector(out, len * 0.5).addScaledVector(UP, len * 0.08),
@@ -278,13 +360,75 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
     }
 
     // Adornments along the main (upper 45%) and each shoot (whole length).
-    const spots: AdornSpot[] = [
-      ...spotsAlong(main, 11, 0.55, rand),
-      ...spotsAlong(curves[1], 6, 0.15, rand),
-      ...spotsAlong(curves[2], 6, 0.15, rand),
-    ];
+    const spots: AdornSpot[] = osmanthus
+      ? []
+      : [
+          ...spotsAlong(main, 11, 0.55, rand),
+          ...spotsAlong(curves[1], 6, 0.15, rand),
+          ...spotsAlong(curves[2], 6, 0.15, rand),
+        ];
 
-    if (opts.adorn.type === "blossom") {
+    if (osmanthus) {
+      const nodes = [
+        ...decussateNodes(main, 0.5, OSMANTHUS_NODE_SPACING_M, rand),
+        ...curves.slice(1).flatMap((c) => decussateNodes(c, 0.12, OSMANTHUS_NODE_SPACING_M, rand)),
+      ];
+      // Every node holds a leaf pair; all but the youngest (tip) pair of
+      // each twig carry a tuft of flowers in both axils.
+      const leafPoses: InstancePose[] = [];
+      const flowerOpen: InstancePose[] = [];
+      const flowerBud: InstancePose[] = [];
+      const flowerShed: number[] = [];
+      const flowerColors: THREE.Color[] = [];
+      const tuftAxis = new THREE.Vector3();
+      const flowerNormal = new THREE.Vector3();
+      const tint = new THREE.Color(osmanthus.flowerHex);
+      for (const node of nodes) {
+        for (const sign of [1, -1]) {
+          const out = node.out.clone().multiplyScalar(sign);
+          // Leaves angle up and out along the twig, the tip drooping a touch.
+          dir.copy(out).multiplyScalar(0.85).addScaledVector(node.tangent, 0.52).addScaledVector(UP, -0.08).normalize();
+          const size = (node.tip ? 0.026 : 0.04) + rand() * 0.012;
+          const base = node.position.clone().addScaledVector(out, 0.0015);
+          leafPoses.push(orientedPose(base, dir, UP, size));
+          if (node.tip) continue;
+          // The tuft sits in the axil — between the leaf base and the twig.
+          tuftAxis.copy(out).multiplyScalar(0.7).addScaledVector(node.tangent, 0.7).normalize();
+          const tuftCenter = node.position.clone().addScaledVector(tuftAxis, 0.0055);
+          for (let k = 0; k < OSMANTHUS_FLOWERS_PER_AXIL; k++) {
+            const jitter = new THREE.Vector3(rand() - 0.5, rand() - 0.5, rand() - 0.5);
+            const position = tuftCenter.clone().addScaledVector(jitter, 0.009);
+            flowerNormal.copy(tuftAxis).addScaledVector(jitter, 1.6).normalize();
+            const quaternion = new THREE.Quaternion().setFromUnitVectors(Z_AXIS, flowerNormal);
+            quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(Z_AXIS, rand() * Math.PI));
+            const s = OSMANTHUS_FLOWER_M * (0.85 + rand() * 0.3);
+            flowerOpen.push({ position, quaternion, scale: new THREE.Vector3(s, s, s) });
+            flowerBud.push({
+              position: position.clone().lerp(tuftCenter, 0.5),
+              quaternion,
+              scale: new THREE.Vector3(s, s, s).multiplyScalar(OSMANTHUS_BUD_FRAC),
+            });
+            flowerShed.push(rand());
+            flowerColors.push(tint.clone().offsetHSL((rand() - 0.5) * 0.02, 0, (rand() - 0.5) * 0.08));
+          }
+        }
+      }
+
+      // Evergreen: the leaves neither unfurl nor fall within the week.
+      const leaves = new THREE.InstancedMesh(osmanthusLeafGeometry, camelliaLeafMaterial, leafPoses.length);
+      leaves.castShadow = true;
+      stemGroup.add(leaves);
+      bloomElements.push(
+        addAnimatedInstances(leaves, leafPoses, leafPoses, new Float32Array(leafPoses.length).fill(2)),
+      );
+
+      const flowers = new THREE.InstancedMesh(osmanthusFlowerGeometryShared, petalMaterial, flowerOpen.length);
+      flowers.castShadow = true;
+      flowerColors.forEach((c, i) => flowers.setColorAt(i, c));
+      if (flowers.instanceColor) flowers.instanceColor.needsUpdate = true;
+      stemGroup.add(flowers);
+      bloomElements.push(addAnimatedInstances(flowers, flowerOpen, flowerBud, flowerShed));
+    } else if (opts.adorn.type === "blossom") {
       const blossoms = new THREE.InstancedMesh(petalGeometry, petalMaterial, spots.length * 5);
       blossoms.castShadow = true;
       const centers = new THREE.InstancedMesh(sphereGeometry, centerMaterial as THREE.Material, spots.length);
@@ -462,13 +606,12 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
     } else if (berry) {
       // Berries: clusters at a few spots plus a handful of green leaves.
       // Only the berries ripen+shed; the accompanying leaves stay put.
-      const leafy = berry.leafy ?? false;
-      const clusterSpots = spots.filter((_, i) => (leafy ? i % 2 === 0 : i % 3 === 0));
-      const berriesPerCluster = berry.berriesPerCluster ?? 9;
-      const berryRadiusM = berry.berryRadiusM ?? 0.0034;
+      const clusterSpots = spots.filter((_, i) => i % 3 === 0);
+      const berriesPerCluster = 9;
+      const berryRadiusM = 0.0034;
       const spreadM = berryRadiusM * 4;
       const berries = new THREE.InstancedMesh(
-        berryGeometry,
+        sphereGeometry,
         berryMaterial as THREE.Material,
         clusterSpots.length * berriesPerCluster,
       );
@@ -499,7 +642,7 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
       stemGroup.add(berries);
       bloomElements.push(addAnimatedInstances(berries, openPoses, budPoses, shedAt));
 
-      const leafSpots = spots.filter((_, i) => (leafy ? i % 2 === 1 : i % 3 === 1));
+      const leafSpots = spots.filter((_, i) => i % 3 === 1);
       const leaves = new THREE.InstancedMesh(leafGeometry, leafMaterial, leafSpots.length);
       leaves.castShadow = true;
       color.setHex(berry.leafHex);
@@ -510,7 +653,7 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
         dir.copy(spot.normal).addScaledVector(UP, -0.2).normalize();
         side.crossVectors(UP, dir).normalize();
         pnormal.crossVectors(side, dir);
-        const size = (leafy ? 0.03 : 0.02) + rand() * 0.008;
+        const size = 0.02 + rand() * 0.008;
         matrix.makeBasis(side, dir, pnormal);
         const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
         const scale = new THREE.Vector3(size * 0.5, size, size);
@@ -568,6 +711,19 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
         rand,
       }),
     );
+  } else if (osmanthus) {
+    // The fallen flowers famously carpet the ground orange.
+    bloomElements.push(
+      addFloorDebris(group, {
+        geometry: osmanthusFlowerGeometryShared,
+        material: petalMaterial,
+        count: MAX_DEBRIS_INSTANCES,
+        sizeM: OSMANTHUS_FLOWER_M * 1.1,
+        radiusM: debrisRadiusM,
+        rand,
+        tint: new THREE.Color(osmanthus.flowerHex),
+      }),
+    );
   } else if (opts.adorn.type === "leaf") {
     bloomElements.push(
       addFloorDebris(group, {
@@ -585,10 +741,10 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
     // petal/leaf gradients), so no extra tint is needed here.
     bloomElements.push(
       addFloorDebris(group, {
-        geometry: berryGeometry,
+        geometry: sphereGeometry,
         material: berryMaterial as THREE.Material,
         count: debrisCount,
-        sizeM: (berry.berryRadiusM ?? 0.0034) * 1.75,
+        sizeM: 0.0034 * 1.75,
         radiusM: debrisRadiusM,
         rand,
       }),

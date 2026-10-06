@@ -1,5 +1,5 @@
-# Header definitions for Cloudflare Workers static assets, ported from the
-# headers in vercel.json (the same content was kept on the Vercel side too).
+# Header definitions for Cloudflare Workers static assets (the only place
+# security headers are set; src/headers.test.ts pins them).
 # https://developers.cloudflare.com/workers/static-assets/headers/
 
 /*
@@ -9,6 +9,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(self), screen-wake-lock=(self)
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Cross-Origin-Opener-Policy: same-origin
 
 # Vite emits these with content hashes, so they can be cached forever. This
 # states explicitly the immutable equivalent that Vercel used to add automatically.

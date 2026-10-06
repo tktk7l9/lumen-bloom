@@ -45,6 +45,14 @@ export interface BouquetOptions {
   /** Interior base radius — where a leaning stem's foot comes to rest. */
   vaseBaseRadiusM: number;
   seed: number;
+  /**
+   * Multiplier on how far the free stretch bows under the head's weight:
+   * 1 = the default soft-stemmed droop, 0 = a rigid stem that keeps the
+   * pivot angle straight up (iris, spider lily, grass culms).
+   */
+  droopScale: number;
+  /** Multiplier on the above-rim length (tall grasses stand well over the rim). */
+  freeLengthScale: number;
 }
 
 export const DEFAULT_BOUQUET: BouquetOptions = {
@@ -54,6 +62,8 @@ export const DEFAULT_BOUQUET: BouquetOptions = {
   vaseBottomYM: 0.04,
   vaseBaseRadiusM: 0.055,
   seed: 5,
+  droopScale: 1,
+  freeLengthScale: 1,
 };
 
 /** Layout a bouquet of stems leaning on the vase rim, seeded for repeatability. */
@@ -86,8 +96,8 @@ export function layoutBouquet(opts?: Partial<BouquetOptions>): StemLayout[] {
     // Above the rim the stem continues at the pivot angle, then bows
     // further outward-and-down under the head — long stems droop hard,
     // short ones barely clear the rim and rest against it.
-    const freeLenM = 0.09 + rand() * 0.17;
-    const droopRad = (0.25 + rand() * 0.6) * Math.min(1, freeLenM / 0.18);
+    const freeLenM = (0.09 + rand() * 0.17) * o.freeLengthScale;
+    const droopRad = (0.25 + rand() * 0.6) * Math.min(1, freeLenM / 0.18) * o.droopScale;
     const seg = freeLenM / 3;
     const point = (prev: Point3, phi: number): Point3 => [
       prev[0] + Math.sin(phi) * cos * seg,

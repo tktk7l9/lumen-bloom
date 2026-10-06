@@ -29,7 +29,30 @@ const LEAF_BUD_FRAC = 0.4;
 export type BranchAdornment =
   | { type: "blossom"; petalHex: number; centerHex: number }
   | { type: "leaf"; leafHexes: readonly number[] }
-  | { type: "berry"; berryHex: number; leafHex: number };
+  | {
+      type: "berry";
+      berryHex: number;
+      leafHex: number;
+      /** Tiny flower clusters (osmanthus) instead of nanten-sized berries. */
+      berryRadiusM?: number;
+      berriesPerCluster?: number;
+      /** Fraction of spots that carry leaves rather than clusters (default 1/3). */
+      leafy?: boolean;
+    }
+  /**
+   * Camellia family: a few large single blooms with a stamen column among
+   * glossy evergreen leaves. `cup` is tsubaki (petals rise around the
+   * stamens, and the whole flower drops at once — petals and stamens are
+   * fused at the base); `flat` is sazanka (opens wide, sheds petal by petal).
+   */
+  | { type: "camellia"; petalHex: number; stamenHex: number; leafHex: number; form: "cup" | "flat" };
+
+const CAMELLIA_FORMS = {
+  cup: { petalCount: 6, splay: 0.62, axis: 0.78, stamenHeight: 1, stamenWidth: 1, shedWhole: true },
+  flat: { petalCount: 7, splay: 0.86, axis: 0.5, stamenHeight: 0.7, stamenWidth: 1.4, shedWhole: false },
+} as const;
+const CAMELLIA_BUD_LENGTH_FRAC = 0.45;
+const CAMELLIA_STAMEN_BUD_FRAC = 0.3;
 
 export interface BranchOptions {
   branchCount: number;
@@ -45,6 +68,8 @@ interface AdornSpot {
   position: THREE.Vector3;
   /** Outward-ish direction away from the branch. */
   normal: THREE.Vector3;
+  /** Branch direction at the spot (leaves lean along it). */
+  tangent: THREE.Vector3;
 }
 
 /** Sample adornment spots along the upper portion of a curve. */
@@ -70,13 +95,13 @@ function spotsAlong(
       .addScaledVector(v, Math.sin(around))
       .addScaledVector(UP, 0.35)
       .normalize();
-    spots.push({ position, normal });
+    spots.push({ position, normal, tangent: tangent.clone() });
   }
   return spots;
 }
 
 /**
- * Cut branches (ume plum, sakura cherry, momiji maple, nanten): a leaning main branch with two side
+ * Cut branches (ume plum, sakura cherry, momiji maple, nanten, camellia): a leaning main branch with two side
  * shoots per stem, adorned with instanced blossoms, leaves, or berry
  * clusters along the upper reaches.
  */
@@ -109,6 +134,37 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
     side: THREE.DoubleSide,
   });
   const sphereGeometry = new THREE.SphereGeometry(1, 8, 6);
+  // Camellia-only assets: broad rounded petals and glossy elliptic leaves.
+  const camellia = opts.adorn.type === "camellia" ? opts.adorn : null;
+  const berry = opts.adorn.type === "berry" ? opts.adorn : null;
+  // Tiny flower clusters (osmanthus) are many and small: a coarser sphere
+  // keeps the triangle count in line with the other kinds.
+  const berryGeometry =
+    berry && (berry.berryRadiusM ?? 0.0034) < 0.0025 ? new THREE.SphereGeometry(1, 5, 4) : sphereGeometry;
+  const camelliaPetalGeometry = camellia
+    ? gridToGeometry(
+        petalGrid({ lengthM: 1, widthM: 0.95, segmentsU: 6, segmentsV: 5, cupM: 0.22, bendM: -0.08 }),
+        0xbdbdbd,
+        0xffffff,
+      )
+    : petalGeometry;
+  const camelliaLeafGeometry = camellia
+    ? gridToGeometry(
+        petalGrid({ lengthM: 1, widthM: 0.5, segmentsU: 6, segmentsV: 4, cupM: 0.05, bendM: -0.1 }),
+        new THREE.Color(camellia.leafHex).multiplyScalar(0.55).getHex(),
+        camellia.leafHex,
+      )
+    : leafGeometry;
+  const camelliaLeafMaterial = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.3,
+    side: THREE.DoubleSide,
+  });
+  const stamenGeometry = new THREE.CylinderGeometry(0.2, 0.26, 0.55, 8);
+  stamenGeometry.translate(0, 0.275, 0);
+  const stamenMaterial = camellia
+    ? new THREE.MeshStandardMaterial({ color: camellia.stamenHex, roughness: 0.75 })
+    : null;
   const centerMaterial =
     opts.adorn.type === "blossom"
       ? new THREE.MeshStandardMaterial({ color: opts.adorn.centerHex, roughness: 0.8 })
@@ -278,6 +334,105 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
       centers.instanceMatrix.needsUpdate = true;
       stemGroup.add(blossoms, centers);
       bloomElements.push(addAnimatedInstances(blossoms, openPoses, budPoses, shedAt));
+    } else if (camellia) {
+      const form = CAMELLIA_FORMS[camellia.form];
+      // Four blooms per branch (two on the main, one per shoot), leaves on
+      // most of the remaining spots.
+      const flowerSpots = spots.filter((_, i) => i % 6 === 3);
+      const leafSpots = spots.filter((_, i) => i % 6 !== 3 && i % 2 === 0);
+
+      const petals = new THREE.InstancedMesh(
+        camelliaPetalGeometry,
+        petalMaterial,
+        flowerSpots.length * form.petalCount,
+      );
+      petals.castShadow = true;
+      const stamens = new THREE.InstancedMesh(
+        stamenGeometry,
+        stamenMaterial as THREE.Material,
+        flowerSpots.length,
+      );
+      stamens.castShadow = true;
+      color.setHex(camellia.petalHex);
+      let instance = 0;
+      const openPoses: InstancePose[] = [];
+      const budPoses: InstancePose[] = [];
+      const shedAt = new Float32Array(flowerSpots.length * form.petalCount);
+      const stamenOpen: InstancePose[] = [];
+      const stamenBud: InstancePose[] = [];
+      const stamenShedAt = new Float32Array(flowerSpots.length);
+      flowerSpots.forEach((spot, si) => {
+        const u = new THREE.Vector3()
+          .crossVectors(Math.abs(spot.normal.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : UP, spot.normal)
+          .normalize();
+        const v = new THREE.Vector3().crossVectors(spot.normal, u);
+        const spin = rand() * Math.PI;
+        const size = 0.026 + rand() * 0.006;
+        const flowerShed = rand();
+        for (let k = 0; k < form.petalCount; k++) {
+          const a = spin + (k / form.petalCount) * Math.PI * 2;
+          openPoses.push(petalPose(u, v, spot.normal, a, form.splay, form.axis, size, spot.position));
+          budPoses.push(
+            petalPose(
+              u,
+              v,
+              spot.normal,
+              a,
+              BUD_SPLAY_WEIGHT,
+              BUD_AXIS_WEIGHT,
+              size * CAMELLIA_BUD_LENGTH_FRAC,
+              spot.position,
+            ),
+          );
+          shedAt[instance] = form.shedWhole ? flowerShed : rand();
+          petals.setColorAt(instance, color);
+          instance++;
+        }
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(UP, spot.normal);
+        const scale = new THREE.Vector3(
+          size * form.stamenWidth,
+          size * form.stamenHeight,
+          size * form.stamenWidth,
+        );
+        stamenOpen.push({ position: spot.position.clone(), quaternion, scale });
+        stamenBud.push({
+          position: spot.position.clone(),
+          quaternion,
+          scale: scale.clone().multiplyScalar(CAMELLIA_STAMEN_BUD_FRAC),
+        });
+        // Sazanka keeps its stamens after the petals have gone, like the
+        // blossom kinds keep their centers.
+        stamenShedAt[si] = form.shedWhole ? flowerShed : 2;
+      });
+      if (petals.instanceColor) petals.instanceColor.needsUpdate = true;
+      stemGroup.add(petals, stamens);
+      bloomElements.push(addAnimatedInstances(petals, openPoses, budPoses, shedAt));
+      bloomElements.push(addAnimatedInstances(stamens, stamenOpen, stamenBud, stamenShedAt));
+
+      const leaves = new THREE.InstancedMesh(camelliaLeafGeometry, camelliaLeafMaterial, leafSpots.length);
+      leaves.castShadow = true;
+      const leafOpenPoses: InstancePose[] = [];
+      const leafBudPoses: InstancePose[] = [];
+      const leafShedAt = new Float32Array(leafSpots.length);
+      leafSpots.forEach((spot, i) => {
+        // Leaves point outward and forward along the branch, tips drooping a touch.
+        dir.copy(spot.normal).multiplyScalar(0.75).addScaledVector(spot.tangent, 0.65).addScaledVector(UP, -0.1).normalize();
+        side.crossVectors(UP, dir).normalize();
+        pnormal.crossVectors(side, dir);
+        const size = 0.042 + rand() * 0.014;
+        matrix.makeBasis(side, dir, pnormal);
+        const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
+        const scale = new THREE.Vector3(size, size, size);
+        leafOpenPoses.push({ position: spot.position.clone(), quaternion, scale });
+        leafBudPoses.push({
+          position: spot.position.clone(),
+          quaternion,
+          scale: scale.clone().multiplyScalar(LEAF_BUD_FRAC),
+        });
+        leafShedAt[i] = rand();
+      });
+      stemGroup.add(leaves);
+      bloomElements.push(addAnimatedInstances(leaves, leafOpenPoses, leafBudPoses, leafShedAt));
     } else if (opts.adorn.type === "leaf") {
       const leaves = new THREE.InstancedMesh(leafGeometry, leafMaterial, spots.length);
       leaves.castShadow = true;
@@ -304,13 +459,16 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
       if (leaves.instanceColor) leaves.instanceColor.needsUpdate = true;
       stemGroup.add(leaves);
       bloomElements.push(addAnimatedInstances(leaves, poses, poses, shedAt));
-    } else {
+    } else if (berry) {
       // Berries: clusters at a few spots plus a handful of green leaves.
       // Only the berries ripen+shed; the accompanying leaves stay put.
-      const clusterSpots = spots.filter((_, i) => i % 3 === 0);
-      const berriesPerCluster = 9;
+      const leafy = berry.leafy ?? false;
+      const clusterSpots = spots.filter((_, i) => (leafy ? i % 2 === 0 : i % 3 === 0));
+      const berriesPerCluster = berry.berriesPerCluster ?? 9;
+      const berryRadiusM = berry.berryRadiusM ?? 0.0034;
+      const spreadM = berryRadiusM * 4;
       const berries = new THREE.InstancedMesh(
-        sphereGeometry,
+        berryGeometry,
         berryMaterial as THREE.Material,
         clusterSpots.length * berriesPerCluster,
       );
@@ -322,11 +480,11 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
       const identity = new THREE.Quaternion();
       for (const spot of clusterSpots) {
         for (let k = 0; k < berriesPerCluster; k++) {
-          const r = 0.0034 + rand() * 0.001;
+          const r = berryRadiusM * (1 + rand() * 0.3);
           const position = new THREE.Vector3(
-            spot.position.x + spot.normal.x * 0.006 + (rand() - 0.5) * 0.014,
-            spot.position.y + spot.normal.y * 0.006 + (rand() - 0.5) * 0.014,
-            spot.position.z + spot.normal.z * 0.006 + (rand() - 0.5) * 0.014,
+            spot.position.x + spot.normal.x * r * 1.8 + (rand() - 0.5) * spreadM,
+            spot.position.y + spot.normal.y * r * 1.8 + (rand() - 0.5) * spreadM,
+            spot.position.z + spot.normal.z * r * 1.8 + (rand() - 0.5) * spreadM,
           );
           openPoses.push({ position, quaternion: identity, scale: new THREE.Vector3(r, r, r) });
           budPoses.push({
@@ -341,10 +499,10 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
       stemGroup.add(berries);
       bloomElements.push(addAnimatedInstances(berries, openPoses, budPoses, shedAt));
 
-      const leafSpots = spots.filter((_, i) => i % 3 === 1);
+      const leafSpots = spots.filter((_, i) => (leafy ? i % 2 === 1 : i % 3 === 1));
       const leaves = new THREE.InstancedMesh(leafGeometry, leafMaterial, leafSpots.length);
       leaves.castShadow = true;
-      color.setHex(opts.adorn.leafHex);
+      color.setHex(berry.leafHex);
       const leafOpenPoses: InstancePose[] = [];
       const leafBudPoses: InstancePose[] = [];
       const leafShedAt = new Float32Array(leafSpots.length);
@@ -352,7 +510,7 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
         dir.copy(spot.normal).addScaledVector(UP, -0.2).normalize();
         side.crossVectors(UP, dir).normalize();
         pnormal.crossVectors(side, dir);
-        const size = 0.02 + rand() * 0.008;
+        const size = (leafy ? 0.03 : 0.02) + rand() * 0.008;
         matrix.makeBasis(side, dir, pnormal);
         const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
         const scale = new THREE.Vector3(size * 0.5, size, size);
@@ -388,6 +546,28 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
         tint: new THREE.Color(opts.adorn.petalHex),
       }),
     );
+  } else if (camellia) {
+    bloomElements.push(
+      addFloorDebris(group, {
+        geometry: camelliaPetalGeometry,
+        material: petalMaterial,
+        count: debrisCount,
+        sizeM: 0.02,
+        radiusM: debrisRadiusM,
+        rand,
+        tint: new THREE.Color(camellia.petalHex),
+      }),
+    );
+    bloomElements.push(
+      addFloorDebris(group, {
+        geometry: camelliaLeafGeometry,
+        material: camelliaLeafMaterial,
+        count: Math.min(MAX_DEBRIS_INSTANCES, Math.max(1, opts.branchCount) * 4),
+        sizeM: 0.03,
+        radiusM: debrisRadiusM,
+        rand,
+      }),
+    );
   } else if (opts.adorn.type === "leaf") {
     bloomElements.push(
       addFloorDebris(group, {
@@ -400,15 +580,15 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
         tint: new THREE.Color(opts.adorn.leafHexes[0] ?? 0xc7472e),
       }),
     );
-  } else {
+  } else if (berry) {
     // Berry material is already the correct color (unlike the neutral
     // petal/leaf gradients), so no extra tint is needed here.
     bloomElements.push(
       addFloorDebris(group, {
-        geometry: sphereGeometry,
+        geometry: berryGeometry,
         material: berryMaterial as THREE.Material,
         count: debrisCount,
-        sizeM: 0.006,
+        sizeM: (berry.berryRadiusM ?? 0.0034) * 1.75,
         radiusM: debrisRadiusM,
         rand,
       }),
@@ -421,7 +601,7 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
         sizeM: 0.014,
         radiusM: debrisRadiusM,
         rand,
-        tint: new THREE.Color(opts.adorn.leafHex),
+        tint: new THREE.Color(berry.leafHex),
       }),
     );
   }

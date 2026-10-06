@@ -25,9 +25,28 @@ export type FloraKind =
   | "kasumisou"
   | "rindou"
   | "calla"
+  | "muscari"
+  | "poppy"
+  | "kikyou"
+  | "iris"
+  | "higanbana"
+  | "susuki"
+  | "camellia"
+  | "sazanka"
+  | "osmanthus"
   | "blossomBranch"
   | "leafBranch"
   | "berryBranch";
+
+/** Kinds built on the cut-branch rig — these carry a bark color. */
+export const BRANCH_KINDS: readonly FloraKind[] = [
+  "blossomBranch",
+  "leafBranch",
+  "berryBranch",
+  "camellia",
+  "sazanka",
+  "osmanthus",
+];
 
 export interface VaseStyle {
   kind: "glass" | "ceramic" | "metal";
@@ -61,7 +80,7 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
     id: "sunflower",
     name: "ひまわり",
     description:
-      "夏を代表する一年草。若い花は太陽を追って東から西へ向きを変え、種の並びはフィボナッチ数の螺旋を描く。花言葉は「憧れ」。",
+      "夏を代表する一年草。つぼみの頃は太陽を追って東から西へ向きを変え、咲いてからは東を向いたまま止まる。種の並びはフィボナッチ数の螺旋を描く。花言葉は「憧れ」。",
     flora: { kind: "sunflower", paletteHex: [], stemCount: 4, seed: 5 },
     vase: { profile: {}, style: { kind: "glass", colorHex: 0xf4fbf9 } },
   },
@@ -69,7 +88,7 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
     id: "tulip",
     name: "チューリップ",
     description:
-      "春の球根花。昼は開き夜は閉じる就眠運動をし、切り花になっても水を吸って伸び続ける。花言葉は「思いやり」。",
+      "春の球根花。気温が上がると開き、下がると閉じる動きを繰り返し、切り花になっても水を吸って伸び続ける。花言葉は「思いやり」。",
     flora: {
       kind: "tulip",
       paletteHex: [0xd7443e, 0xe86fa4, 0xf2b93d, 0x9a5fc2],
@@ -179,7 +198,7 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
     id: "nanten",
     name: "南天",
     description:
-      "「難を転ずる」に通じる縁起木として、正月飾りや鬼門に植えられてきた冬の実もの。艶やかな赤い実は雪景色によく映える。花言葉は「福をなす」。",
+      "「難を転ずる」に通じる縁起木として、正月飾りに使われ、鬼門にも植えられてきた冬の実もの。艶やかな赤い実は雪景色によく映える。花言葉は「福をなす」。",
     flora: {
       kind: "berryBranch",
       paletteHex: [0xc22b2a, 0x4e6b30],
@@ -196,7 +215,7 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
     id: "suisen",
     name: "水仙",
     description:
-      "雪の残る頃から咲き始める冬の花。うつむき加減に咲く白い花弁の中心に、ラッパ状の黄色い副花冠を持つ。花言葉は「自己愛」「うぬぼれ」——水鏡に見とれたナルキッソスの伝説から。",
+      "雪の残る頃から咲き始める冬の花。うつむき加減に咲く白い花弁の中心に、小さな杯のような黄色い副花冠を持つ。花言葉は「自己愛」「うぬぼれ」——水鏡に見とれたナルキッソスの伝説から。",
     flora: {
       kind: "narcissus",
       paletteHex: [0xf4f2ea, 0xe8b93a],
@@ -310,7 +329,7 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
     id: "mum",
     name: "マム",
     description:
-      "皇室の紋にも使われる菊を、洋風にアレンジしたのが「マム」。細い花弁がびっしりと重なる姿は晩秋の贅沢。重陽の節句(9月9日)は菊の節句。花言葉は「高貴」。",
+      "皇室の紋にも使われる菊が欧米で品種改良され、洋花として里帰りしたのが「マム」。細い花弁がびっしりと重なる姿は晩秋の贅沢。重陽の節句(9月9日)は菊の節句。花言葉は「高貴」。",
     flora: {
       kind: "mum",
       paletteHex: [0xe8c23a, 0xf2efe6],
@@ -422,7 +441,7 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
     id: "rindou",
     name: "リンドウ",
     description:
-      "秋の野に凛と咲く青紫の花。敬老の日に贈る花としても定着している——根が生薬「竜胆」として長寿に効くとされたことから。花言葉は「勝利」「正義感」。",
+      "秋の野に凛と咲く青紫の花。根は苦い生薬「竜胆(りゅうたん)」で、病に打ち勝つ花とされたことと、紫が高貴な色であることから敬老の日の贈り物に定着した。花言葉は「勝利」「正義感」。",
     flora: {
       kind: "rindou",
       paletteHex: [0x3a55a8, 0x5a4fa0],
@@ -450,24 +469,377 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
       style: { kind: "ceramic", colorHex: 0xf2efe8 },
     },
   },
+  {
+    id: "roubai",
+    name: "蝋梅",
+    description:
+      "年の瀬から早春にかけ、葉のない枝に蝋細工のような半透明の黄色い花を咲かせる。名に梅とつくがバラ科の梅とは別のロウバイ科で、甘い香りが強い。花言葉は「慈愛」「先見」。",
+    flora: {
+      kind: "blossomBranch",
+      paletteHex: [0xf0cf4a, 0x8a3a3a],
+      branchHex: 0x5a4a3c,
+      stemCount: 3,
+      seed: 31,
+    },
+    vase: {
+      profile: { heightM: 0.36, neckRadiusM: 0.042, bellyRadiusM: 0.05, baseRadiusM: 0.056 },
+      style: { kind: "ceramic", colorHex: 0x3b4a4e },
+    },
+  },
+  {
+    id: "tsubaki",
+    name: "椿",
+    description:
+      "艶のある濃い緑の葉に赤い花が映える、冬から春の花木。花びらと雄しべの根元がつながっているため、散るときは花ごとぽとりと落ちる。花言葉は「控えめな優しさ」「誇り」。",
+    flora: {
+      kind: "camellia",
+      paletteHex: [0xc5262c, 0xf0c94a, 0x2d5a2b],
+      branchHex: 0x4a3a30,
+      stemCount: 3,
+      seed: 32,
+    },
+    vase: {
+      profile: { heightM: 0.32, neckRadiusM: 0.044, bellyRadiusM: 0.056, baseRadiusM: 0.058 },
+      style: { kind: "ceramic", colorHex: 0xe9e4da },
+    },
+  },
+  {
+    id: "sazanka",
+    name: "山茶花",
+    description:
+      "晩秋から初冬、花の少ない季節に咲く。椿によく似るが、花ごと落ちる椿と違って花びらが一枚ずつ散る。童謡「たきび」にも歌われた垣根の花。花言葉は「困難に打ち克つ」「ひたむきさ」。",
+    flora: {
+      kind: "sazanka",
+      paletteHex: [0xe88aa8, 0xf0c94a, 0x2f5c2c],
+      branchHex: 0x4a3a30,
+      stemCount: 3,
+      seed: 33,
+    },
+    vase: {
+      profile: { heightM: 0.32, neckRadiusM: 0.044, bellyRadiusM: 0.056, baseRadiusM: 0.058 },
+      style: { kind: "ceramic", colorHex: 0x2a2c33 },
+    },
+  },
+  {
+    id: "eucalyptus",
+    name: "ユーカリ",
+    description:
+      "銀色がかった丸い葉が人気の枝物。オーストラリア原産でコアラの食樹として知られ、葉には清涼感のある香りがある。乾いても色と形が残り、冬のスワッグやリースの定番。花言葉は「再生」「思い出」。",
+    flora: {
+      kind: "leafBranch",
+      paletteHex: [0x8fa697, 0xa6b9ab, 0x7b937f],
+      branchHex: 0x6b5a48,
+      stemCount: 3,
+      seed: 34,
+    },
+    vase: {
+      profile: { heightM: 0.34, neckRadiusM: 0.046, bellyRadiusM: 0.056, baseRadiusM: 0.058 },
+      style: { kind: "glass", colorHex: 0xd9c8b0 },
+    },
+  },
+  {
+    id: "momo",
+    name: "桃",
+    description:
+      "ひな祭り(桃の節句)に飾る花木。古く中国から伝わり、邪気を払う力があると信じられてきた。梅より遅く桜より少し早く、濃い桃色の花を枝いっぱいに咲かせる。花言葉は「チャーミング」「私はあなたのとりこ」。",
+    flora: {
+      kind: "blossomBranch",
+      paletteHex: [0xf07aa6, 0xf6e2a0],
+      branchHex: 0x5c4536,
+      stemCount: 3,
+      seed: 35,
+    },
+    vase: {
+      profile: { heightM: 0.36, neckRadiusM: 0.046, bellyRadiusM: 0.056, baseRadiusM: 0.058 },
+      style: { kind: "ceramic", colorHex: 0xf2ece2 },
+    },
+  },
+  {
+    id: "rappa-suisen",
+    name: "ラッパ水仙",
+    description:
+      "春の花壇を明るくする黄色い水仙。副花冠が花びらと同じかそれ以上に長く突き出し、ラッパのように見える。英国ウェールズの国花でもある。花言葉は「尊敬」「報われぬ恋」。",
+    flora: {
+      kind: "narcissus",
+      paletteHex: [0xf2d24a, 0xe8961e],
+      stemCount: 5,
+      seed: 36,
+    },
+    vase: {
+      profile: { heightM: 0.28, neckRadiusM: 0.042, bellyRadiusM: 0.054, baseRadiusM: 0.05 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "muscari",
+    name: "ムスカリ",
+    description:
+      "ブドウの房のように小さな壺形の花を連ねる春の球根花。英名はグレープヒヤシンス。チューリップの足元を青く染める名脇役で、一輪挿しにも向く。花言葉は「明るい未来」「通じ合う心」。",
+    flora: {
+      kind: "muscari",
+      paletteHex: [0x3f55c2, 0x4a4fb8],
+      stemCount: 7,
+      seed: 37,
+    },
+    vase: {
+      profile: { heightM: 0.22, neckRadiusM: 0.032, bellyRadiusM: 0.046, baseRadiusM: 0.044 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "poppy",
+    name: "ポピー",
+    description:
+      "薄紙をくしゃっと広げたような花びらが春風に揺れる。毛に覆われたつぼみはうつむいているが、咲くときに2枚の萼を落として上を向く。切り花はアイスランドポピーが主流。花言葉は「いたわり」「思いやり」。",
+    flora: {
+      kind: "poppy",
+      paletteHex: [0xf08a2e, 0xf2d040, 0xf6efe4, 0xee9a8a],
+      stemCount: 6,
+      seed: 38,
+    },
+    vase: {
+      profile: { heightM: 0.27, neckRadiusM: 0.036, bellyRadiusM: 0.05, baseRadiusM: 0.048 },
+      style: { kind: "glass", colorHex: 0xd7dee6 },
+    },
+  },
+  {
+    id: "botan",
+    name: "牡丹",
+    description:
+      "「百花の王」と称えられる春の大輪。芍薬とよく似るが、芍薬が草なのに対し牡丹は木で、ひと足早い4月下旬から咲く。花言葉は「風格」「富貴」。",
+    flora: {
+      kind: "peony",
+      paletteHex: [0xb0224a, 0xf3ece6, 0xd94a7a],
+      stemCount: 3,
+      seed: 39,
+    },
+    vase: {
+      profile: { heightM: 0.26, neckRadiusM: 0.055, bellyRadiusM: 0.09, baseRadiusM: 0.06 },
+      style: { kind: "ceramic", colorHex: 0x1e2a3a },
+    },
+  },
+  {
+    id: "ayame",
+    name: "アヤメ",
+    description:
+      "5月、乾いた草地に咲く紫の花。外側の花びらの付け根に黄色地の網目模様があり、「文目(あやめ)」の名の由来とされる。水辺に咲く杜若や花菖蒲とは生える場所で見分けられる。花言葉は「よい便り」「希望」。",
+    flora: {
+      kind: "iris",
+      paletteHex: [0x5b3fa8, 0x6a4fb8],
+      stemCount: 4,
+      seed: 40,
+    },
+    vase: {
+      profile: { heightM: 0.3, neckRadiusM: 0.042, bellyRadiusM: 0.056, baseRadiusM: 0.054 },
+      style: { kind: "ceramic", colorHex: 0x2f3b3a },
+    },
+  },
+  {
+    id: "hanashoubu",
+    name: "花菖蒲",
+    description:
+      "梅雨の水辺を彩る、江戸時代に品種改良が進んだ日本の園芸花。花びらの付け根の黄色い筋が目印。端午の節句の菖蒲湯に使うショウブは別の植物。花言葉は「うれしい知らせ」「優雅」。",
+    flora: {
+      kind: "iris",
+      paletteHex: [0x6f55b8, 0xf2eef8, 0x9a7fcf],
+      stemCount: 4,
+      seed: 41,
+    },
+    vase: {
+      profile: { heightM: 0.3, neckRadiusM: 0.044, bellyRadiusM: 0.058, baseRadiusM: 0.056 },
+      style: { kind: "ceramic", colorHex: 0xdde6ec },
+    },
+  },
+  {
+    id: "annabelle",
+    name: "アナベル",
+    description:
+      "北米原産のアメリカノリノキの園芸品種。咲き始めは淡い緑、やがて真っ白な手まり咲きになり、終わりにまた緑へ戻る。土の酸度で色が変わらない紫陽花。花言葉は「ひたむきな愛」「辛抱強い愛情」。",
+    flora: {
+      kind: "hydrangea",
+      paletteHex: [0xf4f4ec, 0xe8efd8, 0xf7f6f0],
+      stemCount: 3,
+      seed: 42,
+    },
+    vase: {
+      profile: { heightM: 0.24, neckRadiusM: 0.06, bellyRadiusM: 0.085, baseRadiusM: 0.06 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "sukashiyuri",
+    name: "スカシユリ",
+    description:
+      "初夏、杯のように上を向いて咲く橙色のユリ。花びらの付け根が細く、隙間が透けて見えることが名の由来。香りはほとんどない。花言葉は「注目を浴びる」「飾らぬ美」。",
+    flora: {
+      kind: "lily",
+      paletteHex: [0xe8742a, 0xf2a036],
+      stemCount: 3,
+      seed: 43,
+    },
+    vase: {
+      profile: { heightM: 0.34, neckRadiusM: 0.052, bellyRadiusM: 0.064, baseRadiusM: 0.058 },
+      style: { kind: "ceramic", colorHex: 0x24262c },
+    },
+  },
+  {
+    id: "kikyou",
+    name: "桔梗",
+    description:
+      "万葉の昔から親しまれる秋の七草のひとつ。紙風船のようにふくらんだつぼみが、星の形にぱっと開く。実際の花期は早く、6月頃から咲き始める。花言葉は「永遠の愛」「誠実」。",
+    flora: {
+      kind: "kikyou",
+      paletteHex: [0x5a4cc0, 0x6c5cd0, 0xf2f0f6],
+      stemCount: 5,
+      seed: 44,
+    },
+    vase: {
+      profile: { heightM: 0.29, neckRadiusM: 0.04, bellyRadiusM: 0.054, baseRadiusM: 0.052 },
+      style: { kind: "ceramic", colorHex: 0xafc9ba },
+    },
+  },
+  {
+    id: "lisianthus",
+    name: "トルコキキョウ",
+    description:
+      "名にトルコとキキョウを持つが、北米原産のリンドウ科の花。日本で品種改良が進み、バラのような八重咲きが世界で人気になった。夏でも日持ちがよい。花言葉は「優美」「希望」。",
+    flora: {
+      kind: "rose",
+      paletteHex: [0x7a5cc2, 0xf4f0ec, 0xc9b6e4],
+      stemCount: 4,
+      seed: 45,
+    },
+    vase: {
+      profile: { heightM: 0.28, neckRadiusM: 0.05, bellyRadiusM: 0.07, baseRadiusM: 0.056 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "kibana-cosmos",
+    name: "キバナコスモス",
+    description:
+      "メキシコ原産、暑さに強く夏のうちから咲く黄色や橙のコスモス。秋桜とは同じ属の別種で、互いに交配はできない。花言葉は「野性的な美しさ」「幼い恋心」。",
+    flora: {
+      kind: "cosmos",
+      paletteHex: [0xf0862a, 0xf2b63a, 0xe86a26],
+      stemCount: 6,
+      seed: 46,
+    },
+    vase: {
+      profile: { heightM: 0.3, neckRadiusM: 0.035, bellyRadiusM: 0.045, baseRadiusM: 0.045 },
+      style: { kind: "ceramic", colorHex: 0x3b4a4e },
+    },
+  },
+  {
+    id: "higanbana",
+    name: "彼岸花",
+    description:
+      "秋の彼岸の頃、葉のない茎をすっと伸ばして炎のような赤い花を咲かせる。葉は花が終わってから出るので「葉見ず花見ず」とも。別名は曼珠沙華。花言葉は「情熱」「再会」「また会う日を楽しみに」。",
+    flora: {
+      kind: "higanbana",
+      paletteHex: [0xd8261f, 0xe0322a],
+      stemCount: 5,
+      seed: 47,
+    },
+    vase: {
+      profile: { heightM: 0.32, neckRadiusM: 0.04, bellyRadiusM: 0.05, baseRadiusM: 0.054 },
+      style: { kind: "ceramic", colorHex: 0x24262c },
+    },
+  },
+  {
+    id: "susuki",
+    name: "ススキ",
+    description:
+      "秋の七草のひとつ「尾花」。十五夜には稲穂に見立てて月見団子とともに供え、豊作を祈り魔除けとした。穂は開くにつれて銀白色に光る。花言葉は「活力」「心が通じる」。",
+    flora: {
+      kind: "susuki",
+      paletteHex: [0xe4d8bc, 0xd6c8a4],
+      stemCount: 6,
+      seed: 48,
+    },
+    vase: {
+      profile: { heightM: 0.38, neckRadiusM: 0.038, bellyRadiusM: 0.046, baseRadiusM: 0.056 },
+      style: { kind: "ceramic", colorHex: 0x2a2c33 },
+    },
+  },
+  {
+    id: "kinmokusei",
+    name: "金木犀",
+    description:
+      "秋の訪れを香りで告げる花木。橙色の小花は一週間ほどで散り、地面を金色に染める。日本にあるのはほとんどが雄株で、実を結ぶことはまずない。花言葉は「謙虚」「気高い人」。",
+    flora: {
+      kind: "osmanthus",
+      paletteHex: [0xf0962a, 0x2f5a2c],
+      branchHex: 0x5a4c3e,
+      stemCount: 3,
+      seed: 49,
+    },
+    vase: {
+      profile: { heightM: 0.34, neckRadiusM: 0.046, bellyRadiusM: 0.056, baseRadiusM: 0.058 },
+      style: { kind: "ceramic", colorHex: 0xe8e2d6 },
+    },
+  },
+  {
+    id: "murasakishikibu",
+    name: "紫式部",
+    description:
+      "秋、枝に沿って紫色の小さな実をびっしりとつける。名は『源氏物語』の作者・紫式部にちなむ。庭や花屋で見かけるのは、実つきのよい近縁のコムラサキが多い。花言葉は「聡明」「上品」「愛され上手」。",
+    flora: {
+      kind: "berryBranch",
+      paletteHex: [0x8a4fb8, 0x6f8a44],
+      branchHex: 0x5c4a3c,
+      stemCount: 3,
+      seed: 50,
+    },
+    vase: {
+      profile: { heightM: 0.34, neckRadiusM: 0.044, bellyRadiusM: 0.054, baseRadiusM: 0.056 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "nokongiku",
+    name: "ノコンギク",
+    description:
+      "秋の野山を彩る「野菊」の代表種。淡い紫の花びらと黄色い芯が素朴で、伊藤左千夫の小説『野菊の墓』で知られる野菊もこの仲間。花言葉は「守護」「忘れられない想い」。",
+    flora: {
+      kind: "margaret",
+      paletteHex: [0xb9a8dc, 0xcdbfe6, 0xa795d0],
+      stemCount: 6,
+      seed: 51,
+    },
+    vase: {
+      profile: { heightM: 0.24, neckRadiusM: 0.045, bellyRadiusM: 0.055, baseRadiusM: 0.05 },
+      style: { kind: "ceramic", colorHex: 0xb0603f },
+    },
+  },
 ];
 
 // Seasonal candidates per month (0 = January); the pick cycles week by
-// week so consecutive weeks always differ.
+// week so consecutive weeks always differ. Every month lists the same
+// number of candidates, so the slot index advances continuously across
+// month boundaries — an arrangement that stays in season across two
+// adjacent months keeps the same slot in both, which means it is never
+// shown two weeks in a row and a week straddling the boundary does not
+// swap its flowers mid-week. Tests enforce both.
 const MONTH_ROTATION: ReadonlyArray<readonly string[]> = [
-  ["ume", "suisen", "nanten"], // Jan
-  ["ume", "ranunculus", "anemone", "suisen"], // Feb
-  ["sakura", "mimosa", "tulip", "margaret"], // Mar
-  ["tulip", "sakura", "gerbera", "peony"], // Apr
-  ["peony", "carnation", "calla", "hydrangea"], // May
-  ["hydrangea", "rose", "lavender", "doudan"], // Jun
-  ["sunflower", "lily", "doudan"], // Jul
-  ["sunflower", "kasumisou", "lily", "cosmos"], // Aug
-  ["cosmos", "rindou", "mum", "sunflower"], // Sep
-  ["cosmos", "dahlia", "rose", "momiji"], // Oct
-  ["momiji", "mum", "dahlia"], // Nov
-  ["nanten", "momiji", "suisen"], // Dec
+  ["ume", "suisen", "tsubaki", "roubai", "nanten", "eucalyptus"], // Jan
+  ["ume", "suisen", "tsubaki", "roubai", "ranunculus", "anemone"], // Feb
+  ["tulip", "sakura", "mimosa", "momo", "rappa-suisen", "muscari"], // Mar
+  ["tulip", "sakura", "gerbera", "botan", "margaret", "poppy"], // Apr
+  ["peony", "rose", "ayame", "carnation", "calla", "poppy"], // May
+  ["hydrangea", "rose", "hanashoubu", "kasumisou", "calla", "lavender"], // Jun
+  ["sunflower", "sukashiyuri", "kikyou", "annabelle", "doudan", "lavender"], // Jul
+  ["sunflower", "lily", "kikyou", "lisianthus", "doudan", "kibana-cosmos"], // Aug
+  ["cosmos", "rindou", "susuki", "higanbana", "mum", "kibana-cosmos"], // Sep
+  ["cosmos", "kinmokusei", "susuki", "dahlia", "rose", "murasakishikibu"], // Oct
+  ["sazanka", "mum", "momiji", "dahlia", "nokongiku", "gerbera"], // Nov
+  ["sazanka", "suisen", "momiji", "roubai", "nanten", "eucalyptus"], // Dec
 ];
+
+/** Exposed for tests: which arrangement ids a month can show. */
+export function monthCandidates(month: number): readonly string[] {
+  return MONTH_ROTATION[month];
+}
 
 // Old registry ids kept working for shared links.
 const ALIASES: Record<string, string> = {

@@ -8,11 +8,15 @@ import {
   createAnemoneGroup,
   createCosmosGroup,
   createGerberaGroup,
+  createKikyouGroup,
   createMargaretGroup,
+  createPoppyGroup,
 } from "./flora/daisy";
+import { createHiganbanaGroup } from "./flora/higanbana";
 import { createHydrangeaGroup } from "./flora/hydrangea";
+import { createIrisGroup } from "./flora/iris";
 import { createKasumisouGroup } from "./flora/kasumisou";
-import { createLavenderGroup } from "./flora/lavender";
+import { createLavenderGroup, createMuscariGroup } from "./flora/lavender";
 import { createLilyGroup } from "./flora/lily";
 import {
   createCarnationGroup,
@@ -24,6 +28,7 @@ import {
 } from "./flora/layeredBloom";
 import { createNarcissusGroup } from "./flora/narcissus";
 import { createRindouGroup } from "./flora/rindou";
+import { createSusukiGroup } from "./flora/susuki";
 import { createTulipsGroup } from "./flora/tulips";
 import { createVaseGroup } from "./vase";
 
@@ -98,6 +103,60 @@ export function createArrangement(a: Arrangement): THREE.Group {
       break;
     case "calla":
       flora = createCallaGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "muscari":
+      flora = createMuscariGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "poppy":
+      flora = createPoppyGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "kikyou":
+      flora = createKikyouGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "iris":
+      flora = createIrisGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "higanbana":
+      flora = createHiganbanaGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "susuki":
+      flora = createSusukiGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "osmanthus":
+      flora = createBranchesGroup({
+        branchCount: a.flora.stemCount,
+        seed: a.flora.seed,
+        branchHex: a.flora.branchHex ?? 0x5a4c3e,
+        adorn: {
+          type: "berry",
+          berryHex: a.flora.paletteHex[0] ?? 0xf0962a,
+          leafHex: a.flora.paletteHex[1] ?? 0x2f5a2c,
+          berryRadiusM: 0.0016,
+          berriesPerCluster: 12,
+          leafy: true,
+        },
+        vaseRimYM: profile.heightM,
+        vaseNeckRadiusM: profile.neckRadiusM,
+        vaseBaseRadiusM: profile.baseRadiusM,
+      });
+      break;
+    case "camellia":
+    case "sazanka":
+      flora = createBranchesGroup({
+        branchCount: a.flora.stemCount,
+        seed: a.flora.seed,
+        branchHex: a.flora.branchHex ?? 0x4a3a30,
+        adorn: {
+          type: "camellia",
+          petalHex: a.flora.paletteHex[0] ?? 0xc5262c,
+          stamenHex: a.flora.paletteHex[1] ?? 0xf0c94a,
+          leafHex: a.flora.paletteHex[2] ?? 0x2d5a2b,
+          form: a.flora.kind === "camellia" ? "cup" : "flat",
+        },
+        vaseRimYM: profile.heightM,
+        vaseNeckRadiusM: profile.neckRadiusM,
+        vaseBaseRadiusM: profile.baseRadiusM,
+      });
       break;
     case "blossomBranch":
       flora = createBranchesGroup({

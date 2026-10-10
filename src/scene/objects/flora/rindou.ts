@@ -14,10 +14,65 @@ import {
 import { attachBreeze, gridToGeometry } from "../flowers";
 
 const UP = new THREE.Vector3(0, 1, 0);
-// Real gentians barely open even in bloom — the bud pose is a subtly
-// smaller version of the same near-closed tube, not a different shape.
-const BUD_SCALE_FRAC = 0.6;
 const LEAF_BUD_FRAC = 0.4;
+
+interface PodStyle {
+  /** Pods per stem: min + up to `jitter` more. */
+  count: { min: number; jitter: number };
+  /** One pod crowns the stem tip; the rest sit in the upper axils between these t values. */
+  tipPod: boolean;
+  axilT: { min: number; max: number };
+  /** Pods point up out of the axils (gentian) or hang below the stem (lantern). */
+  hang: boolean;
+  lean: number;
+  lengthM: { min: number; jitter: number };
+  widthFrac: number;
+  /** Bud pose scale: gentians barely change shape, lanterns swell as they ripen. */
+  budScaleFrac: number;
+  stemRadiusM: number;
+  stemHex: number;
+  leafScale: number;
+  droopScale: number;
+  freeLengthScale: number;
+}
+
+// One machine, two plants: the gentian's tube is a near-closed bud that
+// stands upright; the hozuki's is the same tapered tube hung upside down,
+// swelling into the papery orange lantern.
+const STYLES = {
+  rindou: {
+    count: { min: 4, jitter: 3 },
+    tipPod: true,
+    axilT: { min: 0.82, max: 0.96 },
+    hang: false,
+    lean: 0.35,
+    lengthM: { min: 0.02, jitter: 0.007 },
+    widthFrac: 0.55,
+    // Real gentians barely open even in bloom — the bud pose is a subtly
+    // smaller version of the same near-closed tube, not a different shape.
+    budScaleFrac: 0.6,
+    stemRadiusM: 0.0032,
+    stemHex: 0x4a6b34,
+    leafScale: 0.7,
+    droopScale: 1,
+    freeLengthScale: 1,
+  },
+  hozuki: {
+    count: { min: 4, jitter: 2 },
+    tipPod: false,
+    axilT: { min: 0.6, max: 0.95 },
+    hang: true,
+    lean: 0.3,
+    lengthM: { min: 0.034, jitter: 0.008 },
+    widthFrac: 0.62,
+    budScaleFrac: 0.4,
+    stemRadiusM: 0.0028,
+    stemHex: 0x5f8a3c,
+    leafScale: 0.9,
+    droopScale: 0.35,
+    freeLengthScale: 1.2,
+  },
+} satisfies Record<string, PodStyle>;
 
 export interface RindouOptions {
   paletteHex: readonly number[];
@@ -40,14 +95,18 @@ function createBudGeometry(): THREE.LatheGeometry {
   return new THREE.LatheGeometry(profile, 10);
 }
 
-/** Clusters of upright blue-purple buds stacked near the stem tips. */
-export function createRindouGroup(opts: RindouOptions): THREE.Group {
-  const stems = layoutBouquet(opts);
+/** Tapered pods (gentian buds / hozuki lanterns) along the upper stems. */
+function createGroup(opts: RindouOptions, style: PodStyle): THREE.Group {
+  const stems = layoutBouquet({
+    ...opts,
+    droopScale: style.droopScale,
+    freeLengthScale: style.freeLengthScale,
+  });
   const group = new THREE.Group();
   const stemGroups: THREE.Group[] = [];
   const rand = mulberry32(opts.seed + 61);
 
-  const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x4a6b34, roughness: 0.75 });
+  const stemMaterial = new THREE.MeshStandardMaterial({ color: style.stemHex, roughness: 0.75 });
   const budGeometry = createBudGeometry();
   const budMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55 });
   const leafGeometry = gridToGeometry(
@@ -74,7 +133,7 @@ export function createRindouGroup(opts: RindouOptions): THREE.Group {
       stem.controlPoints.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
     );
     const stemMesh = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, 20, 0.0032, 6, false),
+      new THREE.TubeGeometry(curve, 20, style.stemRadiusM, 6, false),
       stemMaterial,
     );
     stemMesh.castShadow = true;
@@ -84,7 +143,7 @@ export function createRindouGroup(opts: RindouOptions): THREE.Group {
       const mesh = new THREE.Mesh(leafGeometry, leafMaterial);
       mesh.castShadow = true;
       mesh.position.copy(curve.getPointAt(leaf.t));
-      mesh.scale.setScalar(leaf.lengthM * 0.7);
+      mesh.scale.setScalar(leaf.lengthM * style.leafScale);
       const az = (leaf.azimuthDeg * Math.PI) / 180;
       const d = new THREE.Vector3(Math.cos(az) * 0.7, 0.35, Math.sin(az) * 0.7).normalize();
       const s = new THREE.Vector3().crossVectors(UP, d).normalize();
@@ -102,31 +161,32 @@ export function createRindouGroup(opts: RindouOptions): THREE.Group {
     const tint = new THREE.Color(
       opts.paletteHex[Math.floor(stem.colorSeed * opts.paletteHex.length)] ?? 0x3a55a8,
     );
-    const budCount = 4 + Math.floor(rand() * 3);
+    const budCount = style.count.min + Math.floor(rand() * style.count.jitter);
     const buds = new THREE.InstancedMesh(budGeometry, budMaterial, budCount);
     buds.castShadow = true;
     const openPoses: InstancePose[] = [];
     const budPoses: InstancePose[] = [];
     const shedAt = new Float32Array(budCount);
     for (let k = 0; k < budCount; k++) {
-      const t = k === 0 ? 1 : 0.82 + rand() * 0.14;
+      const atTip = style.tipPod && k === 0;
+      const t = atTip ? 1 : style.axilT.min + rand() * (style.axilT.max - style.axilT.min);
       const p = curve.getPointAt(Math.min(t, 1));
-      const lean = k === 0 ? 0 : 0.35;
+      const lean = atTip ? 0 : style.lean;
       const a = rand() * Math.PI * 2;
-      dir.set(Math.cos(a) * lean, 1, Math.sin(a) * lean).normalize();
+      dir.set(Math.cos(a) * lean, style.hang ? -1 : 1, Math.sin(a) * lean).normalize();
       side.crossVectors(UP, dir).normalize();
       normal.crossVectors(side, dir);
-      const len = 0.02 + rand() * 0.007;
+      const len = style.lengthM.min + rand() * style.lengthM.jitter;
       matrix.makeBasis(side, dir, normal);
       const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
       const position = new THREE.Vector3(
         p.x + Math.cos(a) * lean * 0.006,
-        p.y - (k === 0 ? 0 : 0.004),
+        p.y - (atTip ? 0 : 0.004),
         p.z + Math.sin(a) * lean * 0.006,
       );
-      const scale = new THREE.Vector3(len * 0.55, len, len * 0.55);
+      const scale = new THREE.Vector3(len * style.widthFrac, len, len * style.widthFrac);
       openPoses.push({ position, quaternion, scale });
-      budPoses.push({ position, quaternion, scale: scale.clone().multiplyScalar(BUD_SCALE_FRAC) });
+      budPoses.push({ position, quaternion, scale: scale.clone().multiplyScalar(style.budScaleFrac) });
       shedAt[k] = rand();
       color.copy(tint).offsetHSL(0, 0, (rand() - 0.5) * 0.06);
       buds.setColorAt(k, color);
@@ -166,3 +226,6 @@ export function createRindouGroup(opts: RindouOptions): THREE.Group {
   attachBloomCycle(group, bloomElements);
   return group;
 }
+
+export const createRindouGroup = (o: RindouOptions): THREE.Group => createGroup(o, STYLES.rindou);
+export const createHozukiGroup = (o: RindouOptions): THREE.Group => createGroup(o, STYLES.hozuki);

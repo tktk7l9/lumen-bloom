@@ -15,6 +15,55 @@ import { attachBreeze, gridToGeometry } from "../flowers";
 const UP = new THREE.Vector3(0, 1, 0);
 const LEAF_BUD_FRAC = 0.4;
 
+interface TrumpetStyle {
+  petal: { widthM: number; cupM: number; bendM: number };
+  /** Head radius × the layout's head radius. */
+  headScale: number;
+  /** Tilt of the two tepal triads from the face plane (steeper = more of a trumpet). */
+  tiltDeg: { outer: number; inner: number };
+  /** Face direction: layout nod × nodScale + upLift, renormalized. */
+  nodScale: number;
+  upLift: number;
+  /** Yaw of each bloom about the stem tip — several entries give an umbel of blooms per stem. */
+  bloomYawsDeg: readonly number[];
+  /** Amaryllis scapes are leafless. */
+  leafless: boolean;
+  stemRadiusM: number;
+  stemHex: number;
+  filamentHex: number;
+}
+
+// One machine, two flowers: a lily's tepals curl hard backward around
+// splayed stamens, one bloom per stem; an amaryllis holds two broad
+// trumpets sideways off a thick hollow scape.
+const STYLES = {
+  lily: {
+    // Long petal with a strong backward curl — the lily's signature recurve.
+    petal: { widthM: 0.42, cupM: 0.1, bendM: 0.5 },
+    headScale: 0.62,
+    tiltDeg: { outer: 38, inner: 30 },
+    nodScale: 0.4,
+    upLift: 0.35,
+    bloomYawsDeg: [0],
+    leafless: false,
+    stemRadiusM: 0.0045,
+    stemHex: 0x46672f,
+    filamentHex: 0xe6e2d2,
+  },
+  amaryllis: {
+    petal: { widthM: 0.64, cupM: 0.16, bendM: 0.14 },
+    headScale: 0.72,
+    tiltDeg: { outer: 46, inner: 40 },
+    nodScale: 0.3,
+    upLift: 0.15,
+    bloomYawsDeg: [-48, 48],
+    leafless: true,
+    stemRadiusM: 0.0068,
+    stemHex: 0x5c8a3a,
+    filamentHex: 0xf2e6e0,
+  },
+} satisfies Record<string, TrumpetStyle>;
+
 export interface LilyOptions {
   paletteHex: readonly number[];
   stemCount: number;
@@ -24,16 +73,15 @@ export interface LilyOptions {
   vaseBaseRadiusM: number;
 }
 
-/** Large recurved six-petal blooms with prominent stamens. */
-export function createLilyGroup(opts: LilyOptions): THREE.Group {
+/** Large six-tepal blooms with prominent stamens. */
+function createGroup(opts: LilyOptions, style: TrumpetStyle): THREE.Group {
   const stems = layoutBouquet(opts);
   const group = new THREE.Group();
   const stemGroups: THREE.Group[] = [];
 
-  const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x46672f, roughness: 0.75 });
-  // Long petal with a strong backward curl — the lily's signature recurve.
+  const stemMaterial = new THREE.MeshStandardMaterial({ color: style.stemHex, roughness: 0.75 });
   const petalGeometry = gridToGeometry(
-    petalGrid({ lengthM: 1, widthM: 0.42, segmentsU: 9, segmentsV: 6, cupM: 0.1, bendM: 0.5 }),
+    petalGrid({ lengthM: 1, segmentsU: 9, segmentsV: 6, ...style.petal }),
     0xd4d2ca,
     0xffffff,
   );
@@ -54,7 +102,7 @@ export function createLilyGroup(opts: LilyOptions): THREE.Group {
   });
   const filamentGeometry = new THREE.CylinderGeometry(0.015, 0.015, 1, 5);
   filamentGeometry.translate(0, 0.5, 0);
-  const filamentMaterial = new THREE.MeshStandardMaterial({ color: 0xe6e2d2, roughness: 0.6 });
+  const filamentMaterial = new THREE.MeshStandardMaterial({ color: style.filamentHex, roughness: 0.6 });
   const antherGeometry = new THREE.SphereGeometry(1, 6, 5);
   const antherMaterial = new THREE.MeshStandardMaterial({ color: 0x8a5a24, roughness: 0.7 });
 
@@ -71,13 +119,13 @@ export function createLilyGroup(opts: LilyOptions): THREE.Group {
       stem.controlPoints.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
     );
     const stemMesh = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, 20, 0.0045, 8, false),
+      new THREE.TubeGeometry(curve, 20, style.stemRadiusM, 8, false),
       stemMaterial,
     );
     stemMesh.castShadow = true;
     stemGroup.add(stemMesh);
 
-    for (const leaf of stem.leaves) {
+    for (const leaf of style.leafless ? [] : stem.leaves) {
       const mesh = new THREE.Mesh(leafGeometry, leafMaterial);
       mesh.castShadow = true;
       mesh.position.copy(curve.getPointAt(leaf.t));
@@ -94,72 +142,80 @@ export function createLilyGroup(opts: LilyOptions): THREE.Group {
       );
     }
 
-    // Lilies face outward, barely nodding.
-    const head = new THREE.Group();
-    head.position.set(...stem.headPosition);
-    const [dx, dy, dz] = stem.headDirection;
-    head.quaternion.setFromUnitVectors(
-      UP,
-      new THREE.Vector3(dx, dy * 0.4 + 0.35, dz).normalize(),
-    );
-
-    const R = stem.headRadiusM * 0.62;
+    const R = stem.headRadiusM * style.headScale;
     const tint = new THREE.Color(
       opts.paletteHex[Math.floor(stem.colorSeed * opts.paletteHex.length)] ?? 0xf6f3ec,
     );
+    const [dx, dy, dz] = stem.headDirection;
+    const tipPoint = curve.getPointAt(1);
 
-    // Two offset triads make the classic six-tepal star.
-    bloomElements.push(
-      addAnimatedRadialRing(head, petalGeometry, petalMaterial, {
-        count: 3,
-        ringRadius: R * 0.12,
-        ringY: 0,
-        tiltDeg: 38,
-        lengthM: R,
-        angleOffsetRad: 0,
-        tint,
-        rand,
-      }),
-    );
-    bloomElements.push(
-      addAnimatedRadialRing(head, petalGeometry, petalMaterial, {
-        count: 3,
-        ringRadius: R * 0.12,
-        ringY: -0.004,
-        tiltDeg: 30,
-        lengthM: R * 0.96,
-        angleOffsetRad: Math.PI / 3,
-        tint: tint.clone().multiplyScalar(0.97),
-        rand,
-      }),
-    );
+    for (const yawDeg of style.bloomYawsDeg) {
+      // Blooms face outward, barely nodding; an umbel fans its blooms
+      // around the stem tip, each a short neck out along its own direction.
+      const yaw = (yawDeg * Math.PI) / 180;
+      const facing = new THREE.Vector3(
+        dx * Math.cos(yaw) - dz * Math.sin(yaw),
+        dy * style.nodScale + style.upLift,
+        dx * Math.sin(yaw) + dz * Math.cos(yaw),
+      ).normalize();
+      const head = new THREE.Group();
+      if (style.bloomYawsDeg.length === 1) head.position.set(...stem.headPosition);
+      else head.position.copy(tipPoint).addScaledVector(facing, 0.012);
+      head.quaternion.setFromUnitVectors(UP, facing);
 
-    // Six stamens splaying from the throat, brown anthers on the tips.
-    const filaments = new THREE.InstancedMesh(filamentGeometry, filamentMaterial, 6);
-    const anthers = new THREE.InstancedMesh(antherGeometry, antherMaterial, 6);
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + 0.3;
-      dir
-        .set(Math.cos(a) * 0.45, 1, Math.sin(a) * 0.45)
-        .normalize();
-      side.crossVectors(UP, dir).normalize();
-      normal.crossVectors(side, dir);
-      const len = R * 0.55;
-      matrix.makeBasis(side, dir, normal);
-      matrix.scale(new THREE.Vector3(len, len, len));
-      matrix.setPosition(0, 0.004, 0);
-      filaments.setMatrixAt(k, matrix);
-      const tip = dir.clone().multiplyScalar(len).add(new THREE.Vector3(0, 0.004, 0));
-      const s = R * 0.05;
-      matrix.makeScale(s, s * 1.8, s);
-      matrix.setPosition(tip.x, tip.y, tip.z);
-      anthers.setMatrixAt(k, matrix);
+      // Two offset triads make the classic six-tepal star.
+      bloomElements.push(
+        addAnimatedRadialRing(head, petalGeometry, petalMaterial, {
+          count: 3,
+          ringRadius: R * 0.12,
+          ringY: 0,
+          tiltDeg: style.tiltDeg.outer,
+          lengthM: R,
+          angleOffsetRad: 0,
+          tint,
+          rand,
+        }),
+      );
+      bloomElements.push(
+        addAnimatedRadialRing(head, petalGeometry, petalMaterial, {
+          count: 3,
+          ringRadius: R * 0.12,
+          ringY: -0.004,
+          tiltDeg: style.tiltDeg.inner,
+          lengthM: R * 0.96,
+          angleOffsetRad: Math.PI / 3,
+          tint: tint.clone().multiplyScalar(0.97),
+          rand,
+        }),
+      );
+
+      // Six stamens splaying from the throat, brown anthers on the tips.
+      const filaments = new THREE.InstancedMesh(filamentGeometry, filamentMaterial, 6);
+      const anthers = new THREE.InstancedMesh(antherGeometry, antherMaterial, 6);
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2 + 0.3;
+        dir
+          .set(Math.cos(a) * 0.45, 1, Math.sin(a) * 0.45)
+          .normalize();
+        side.crossVectors(UP, dir).normalize();
+        normal.crossVectors(side, dir);
+        const len = R * 0.55;
+        matrix.makeBasis(side, dir, normal);
+        matrix.scale(new THREE.Vector3(len, len, len));
+        matrix.setPosition(0, 0.004, 0);
+        filaments.setMatrixAt(k, matrix);
+        const tip = dir.clone().multiplyScalar(len).add(new THREE.Vector3(0, 0.004, 0));
+        const s = R * 0.05;
+        matrix.makeScale(s, s * 1.8, s);
+        matrix.setPosition(tip.x, tip.y, tip.z);
+        anthers.setMatrixAt(k, matrix);
+      }
+      filaments.instanceMatrix.needsUpdate = true;
+      anthers.instanceMatrix.needsUpdate = true;
+      head.add(filaments, anthers);
+      stemGroup.add(head);
     }
-    filaments.instanceMatrix.needsUpdate = true;
-    anthers.instanceMatrix.needsUpdate = true;
-    head.add(filaments, anthers);
 
-    stemGroup.add(head);
     group.add(stemGroup);
     stemGroups.push(stemGroup);
   }
@@ -170,24 +226,29 @@ export function createLilyGroup(opts: LilyOptions): THREE.Group {
       geometry: petalGeometry,
       material: petalMaterial,
       count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 20),
-      sizeM: avgHeadRadiusM * 0.62 * 0.5,
+      sizeM: avgHeadRadiusM * style.headScale * 0.5,
       radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
       rand,
       tint: new THREE.Color(opts.paletteHex[0] ?? 0xf6f3ec),
     }),
   );
-  bloomElements.push(
-    addFloorDebris(group, {
-      geometry: leafGeometry,
-      material: leafMaterial,
-      count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 6),
-      sizeM: 0.07,
-      radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
-      rand,
-    }),
-  );
+  if (!style.leafless) {
+    bloomElements.push(
+      addFloorDebris(group, {
+        geometry: leafGeometry,
+        material: leafMaterial,
+        count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * 6),
+        sizeM: 0.07,
+        radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
+        rand,
+      }),
+    );
+  }
 
   attachBreeze(group, stemGroups);
   attachBloomCycle(group, bloomElements);
   return group;
 }
+
+export const createLilyGroup = (o: LilyOptions): THREE.Group => createGroup(o, STYLES.lily);
+export const createAmaryllisGroup = (o: LilyOptions): THREE.Group => createGroup(o, STYLES.amaryllis);

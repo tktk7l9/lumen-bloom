@@ -29,7 +29,19 @@ const BERRY_BUD_FRAC = 0.35;
 const LEAF_BUD_FRAC = 0.4;
 
 export type BranchAdornment =
-  | { type: "blossom"; petalHex: number; centerHex: number }
+  /**
+   * Small five-petalled blossoms (ume, sakura, momo, roubai). `petalCount`,
+   * `size` and `density` reshape it into the dogwood's four big bracts
+   * around a green button, spaced further apart.
+   */
+  | {
+      type: "blossom";
+      petalHex: number;
+      centerHex: number;
+      petalCount?: number;
+      size?: { min: number; jitter: number };
+      density?: number;
+    }
   | { type: "leaf"; leafHexes: readonly number[] }
   | { type: "berry"; berryHex: number; leafHex: number }
   /**
@@ -42,16 +54,99 @@ export type BranchAdornment =
    * Camellia family: a few large single blooms with a stamen column among
    * glossy evergreen leaves. `cup` is tsubaki (petals rise around the
    * stamens, and the whole flower drops at once — petals and stamens are
-   * fused at the base); `flat` is sazanka (opens wide, sheds petal by petal).
+   * fused at the base); `flat` is sazanka (opens wide, sheds petal by petal);
+   * `magnolia` is the mokuren's tall narrow-petalled cup on a bare branch.
    */
-  | { type: "camellia"; petalHex: number; stamenHex: number; leafHex: number; form: "cup" | "flat" };
+  | {
+      type: "camellia";
+      petalHex: number;
+      stamenHex: number;
+      leafHex: number;
+      form: "cup" | "flat" | "magnolia";
+      leafless?: boolean;
+    }
+  /**
+   * Wisteria: pendent racemes of small pea flowers hanging from the
+   * branches, each raceme opening from the top and tapering to budded
+   * tips, with a few pinnate leaves between them.
+   */
+  | { type: "raceme"; flowerHex: number; tipHex: number; leafHex: number }
+  /** Pine: tufts of long needles along every twig — evergreen, nothing opens or falls. */
+  | { type: "needle"; needleHex: number };
 
 const CAMELLIA_FORMS = {
-  cup: { petalCount: 6, splay: 0.62, axis: 0.78, stamenHeight: 1, stamenWidth: 1, shedWhole: true },
-  flat: { petalCount: 7, splay: 0.86, axis: 0.5, stamenHeight: 0.7, stamenWidth: 1.4, shedWhole: false },
+  cup: {
+    petalCount: 6,
+    splay: 0.62,
+    axis: 0.78,
+    stamenHeight: 1,
+    stamenWidth: 1,
+    shedWhole: true,
+    petal: { widthM: 0.95, cupM: 0.22, bendM: -0.08 },
+    size: { min: 0.026, jitter: 0.006 },
+    bloomEvery: 6,
+  },
+  flat: {
+    petalCount: 7,
+    splay: 0.86,
+    axis: 0.5,
+    stamenHeight: 0.7,
+    stamenWidth: 1.4,
+    shedWhole: false,
+    petal: { widthM: 0.95, cupM: 0.22, bendM: -0.08 },
+    size: { min: 0.026, jitter: 0.006 },
+    bloomEvery: 6,
+  },
+  magnolia: {
+    petalCount: 6,
+    splay: 0.48,
+    axis: 0.88,
+    stamenHeight: 0.9,
+    stamenWidth: 0.5,
+    shedWhole: false,
+    petal: { widthM: 0.6, cupM: 0.2, bendM: -0.16 },
+    size: { min: 0.032, jitter: 0.008 },
+    bloomEvery: 4,
+  },
 } as const;
 const CAMELLIA_BUD_LENGTH_FRAC = 0.45;
 const CAMELLIA_STAMEN_BUD_FRAC = 0.3;
+
+const RACEME_FLOWER_SPACING_M = 0.0038;
+const RACEME_FLOWER_M = 0.0105;
+const RACEME_BUD_FRAC = 0.35;
+const NEEDLES_PER_TUFT = 16;
+
+/**
+ * One small pea flower facing +Z: a rounded standard petal fanning up
+ * (+Y), two wings hanging down and forward, and a short keel between them.
+ * Shades are baked as brightness so the instance color supplies the hue.
+ */
+function peaFlowerGeometry(): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const push = (shade: number, ...pts: number[][]): void => {
+    for (const p of pts) {
+      positions.push(...p);
+      colors.push(shade, shade, shade);
+    }
+  };
+  // Standard: a fan of three triangles from just above the origin.
+  const fan = [30, 70, 110, 150].map((deg) => {
+    const a = (deg * Math.PI) / 180;
+    return [Math.cos(a) * 0.5, 0.05 + Math.sin(a) * 0.5, -0.1];
+  });
+  for (let i = 0; i < 3; i++) push(1, [0, 0.05, 0], fan[i], fan[i + 1]);
+  // Wings, deeper in tone, and a pale keel.
+  push(0.78, [0, 0.02, 0], [-0.3, -0.42, 0.15], [-0.08, -0.5, 0.25]);
+  push(0.78, [0, 0.02, 0], [0.08, -0.5, 0.25], [0.3, -0.42, 0.15]);
+  push(0.92, [0, 0, 0], [-0.06, -0.45, 0.28], [0.06, -0.45, 0.28]);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
 
 export interface BranchOptions {
   branchCount: number;
@@ -210,8 +305,26 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
   const sphereGeometry = new THREE.SphereGeometry(1, 8, 6);
   // Camellia-only assets: broad rounded petals and glossy elliptic leaves.
   const camellia = opts.adorn.type === "camellia" ? opts.adorn : null;
+  const camelliaForm = camellia ? CAMELLIA_FORMS[camellia.form] : null;
   const berry = opts.adorn.type === "berry" ? opts.adorn : null;
   const osmanthus = opts.adorn.type === "osmanthus" ? opts.adorn : null;
+  const blossom = opts.adorn.type === "blossom" ? opts.adorn : null;
+  const raceme = opts.adorn.type === "raceme" ? opts.adorn : null;
+  const needle = opts.adorn.type === "needle" ? opts.adorn : null;
+  const blossomPetalCount = blossom?.petalCount ?? 5;
+  const blossomSize = blossom?.size ?? { min: 0.009, jitter: 0.004 };
+  const spotDensity = blossom?.density ?? (needle ? 1.4 : 1);
+  // Wisteria and pine assets: the pea flower shared by the racemes and the
+  // fallen carpet, and a thin two-tone needle blade.
+  const peaGeometry = raceme ? peaFlowerGeometry() : petalGeometry;
+  const needleGeometry = needle
+    ? gridToGeometry(
+        petalGrid({ lengthM: 1, widthM: 0.035, segmentsU: 2, segmentsV: 1, cupM: 0, bendM: 0.06 }),
+        new THREE.Color(needle.needleHex).multiplyScalar(0.55).getHex(),
+        needle.needleHex,
+      )
+    : leafGeometry;
+  const rachisMaterial = new THREE.MeshStandardMaterial({ color: 0x8a9a6a, roughness: 0.8 });
   // Osmanthus: narrow elliptic leaves, dark at the midrib base, and the
   // tiny flower shared by the axil tufts and the fallen carpet on the floor.
   const osmanthusLeafGeometry = osmanthus
@@ -222,9 +335,9 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
       )
     : leafGeometry;
   const osmanthusFlowerGeometryShared = osmanthus ? osmanthusFlowerGeometry() : petalGeometry;
-  const camelliaPetalGeometry = camellia
+  const camelliaPetalGeometry = camelliaForm
     ? gridToGeometry(
-        petalGrid({ lengthM: 1, widthM: 0.95, segmentsU: 6, segmentsV: 5, cupM: 0.22, bendM: -0.08 }),
+        petalGrid({ lengthM: 1, segmentsU: 6, segmentsV: 5, ...camelliaForm.petal }),
         0xbdbdbd,
         0xffffff,
       )
@@ -363,12 +476,107 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
     const spots: AdornSpot[] = osmanthus
       ? []
       : [
-          ...spotsAlong(main, 11, 0.55, rand),
-          ...spotsAlong(curves[1], 6, 0.15, rand),
-          ...spotsAlong(curves[2], 6, 0.15, rand),
+          ...spotsAlong(main, Math.round(11 * spotDensity), 0.55, rand),
+          ...spotsAlong(curves[1], Math.round(6 * spotDensity), 0.15, rand),
+          ...spotsAlong(curves[2], Math.round(6 * spotDensity), 0.15, rand),
         ];
 
-    if (osmanthus) {
+    if (raceme) {
+      // Racemes hang from every third spot; the spots between carry a leaf.
+      const racemeSpots = spots.filter((_, i) => i % 3 === 0);
+      const leafSpots = spots.filter((_, i) => i % 3 !== 0);
+      const flowerOpen: InstancePose[] = [];
+      const flowerBud: InstancePose[] = [];
+      const flowerShed: number[] = [];
+      const flowerColors: THREE.Color[] = [];
+      const open = new THREE.Color(raceme.flowerHex);
+      const tipColor = new THREE.Color(raceme.tipHex);
+      const drift = new THREE.Vector3();
+      const radial = new THREE.Vector3();
+      for (const spot of racemeSpots) {
+        // The rachis hangs straight down with a little outward drift, as a
+        // thin green cord; the flowers spiral around it.
+        const length = 0.11 + rand() * 0.06;
+        drift.set(spot.normal.x, 0, spot.normal.z).normalize();
+        const rachis = new THREE.CatmullRomCurve3([
+          spot.position.clone(),
+          spot.position.clone().addScaledVector(drift, 0.012).addScaledVector(UP, -length * 0.5),
+          spot.position.clone().addScaledVector(drift, 0.02).addScaledVector(UP, -length),
+        ]);
+        const rachisMesh = new THREE.Mesh(new THREE.TubeGeometry(rachis, 6, 0.0007, 4, false), rachisMaterial);
+        stemGroup.add(rachisMesh);
+        const count = Math.round(length / RACEME_FLOWER_SPACING_M);
+        const spin = rand() * Math.PI * 2;
+        for (let k = 0; k < count; k++) {
+          const t = (k + 0.5) / count;
+          const on = rachis.getPointAt(t);
+          // Two flowers per level, opposite each other, spiralling down.
+          for (const half of [0, Math.PI]) {
+            const a = spin + k * 2.399963 + half;
+            radial.set(Math.cos(a), 0, Math.sin(a));
+            const position = on.clone().addScaledVector(radial, 0.004);
+            const s = RACEME_FLOWER_M * (1 - 0.35 * t) * (0.9 + rand() * 0.2);
+            flowerOpen.push(orientedPose(position, UP, radial, s));
+            flowerBud.push(orientedPose(on.clone().addScaledVector(radial, 0.0012), UP, radial, s * RACEME_BUD_FRAC));
+            // The top of the raceme opens (and drops) first.
+            flowerShed.push(0.25 + rand() * 0.45 + t * 0.3);
+            flowerColors.push(
+              open
+                .clone()
+                .lerp(tipColor, THREE.MathUtils.smoothstep(t, 0.55, 1))
+                .offsetHSL(0, 0, (rand() - 0.5) * 0.06),
+            );
+          }
+        }
+      }
+      const flowers = new THREE.InstancedMesh(peaGeometry, petalMaterial, flowerOpen.length);
+      flowers.castShadow = true;
+      flowerColors.forEach((c, i) => flowers.setColorAt(i, c));
+      if (flowers.instanceColor) flowers.instanceColor.needsUpdate = true;
+      stemGroup.add(flowers);
+      bloomElements.push(addAnimatedInstances(flowers, flowerOpen, flowerBud, flowerShed));
+
+      const leaves = new THREE.InstancedMesh(leafGeometry, leafMaterial, leafSpots.length);
+      leaves.castShadow = true;
+      color.setHex(raceme.leafHex);
+      const leafPoses: InstancePose[] = [];
+      leafSpots.forEach((spot, i) => {
+        dir.copy(spot.normal).addScaledVector(spot.tangent, 0.5).addScaledVector(UP, -0.25).normalize();
+        leafPoses.push(orientedPose(spot.position, dir, UP, new THREE.Vector3(0.028, 0.04 + rand() * 0.012, 0.03)));
+        leaves.setColorAt(i, color);
+      });
+      if (leaves.instanceColor) leaves.instanceColor.needsUpdate = true;
+      stemGroup.add(leaves);
+      bloomElements.push(addAnimatedInstances(leaves, leafPoses, leafPoses, new Float32Array(leafPoses.length).fill(2)));
+    } else if (needle) {
+      // A fascicle of needles at every spot, all leaning forward along the
+      // twig and fanning around it.
+      const poses: InstancePose[] = [];
+      const u = new THREE.Vector3();
+      const v = new THREE.Vector3();
+      for (const spot of spots) {
+        u.crossVectors(Math.abs(spot.tangent.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : UP, spot.tangent).normalize();
+        v.crossVectors(spot.tangent, u);
+        for (let k = 0; k < NEEDLES_PER_TUFT; k++) {
+          const a = rand() * Math.PI * 2;
+          const fan = 0.3 + rand() * 0.4;
+          dir
+            .copy(spot.tangent)
+            .multiplyScalar(0.7)
+            .addScaledVector(u, Math.cos(a) * fan)
+            .addScaledVector(v, Math.sin(a) * fan)
+            .addScaledVector(UP, 0.08)
+            .normalize();
+          const length = 0.034 + rand() * 0.018;
+          poses.push(orientedPose(spot.position, dir, UP, length));
+        }
+      }
+      const needles = new THREE.InstancedMesh(needleGeometry, leafMaterial, poses.length);
+      needles.castShadow = true;
+      stemGroup.add(needles);
+      // Evergreen: needles neither open nor fall within the week.
+      bloomElements.push(addAnimatedInstances(needles, poses, poses, new Float32Array(poses.length).fill(2)));
+    } else if (osmanthus) {
       const nodes = [
         ...decussateNodes(main, 0.5, OSMANTHUS_NODE_SPACING_M, rand),
         ...curves.slice(1).flatMap((c) => decussateNodes(c, 0.12, OSMANTHUS_NODE_SPACING_M, rand)),
@@ -428,24 +636,24 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
       if (flowers.instanceColor) flowers.instanceColor.needsUpdate = true;
       stemGroup.add(flowers);
       bloomElements.push(addAnimatedInstances(flowers, flowerOpen, flowerBud, flowerShed));
-    } else if (opts.adorn.type === "blossom") {
-      const blossoms = new THREE.InstancedMesh(petalGeometry, petalMaterial, spots.length * 5);
+    } else if (blossom) {
+      const blossoms = new THREE.InstancedMesh(petalGeometry, petalMaterial, spots.length * blossomPetalCount);
       blossoms.castShadow = true;
       const centers = new THREE.InstancedMesh(sphereGeometry, centerMaterial as THREE.Material, spots.length);
-      color.setHex(opts.adorn.petalHex);
+      color.setHex(blossom.petalHex);
       let instance = 0;
       const openPoses: InstancePose[] = [];
       const budPoses: InstancePose[] = [];
-      const shedAt = new Float32Array(spots.length * 5);
+      const shedAt = new Float32Array(spots.length * blossomPetalCount);
       spots.forEach((spot, si) => {
         const u = new THREE.Vector3()
           .crossVectors(Math.abs(spot.normal.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : UP, spot.normal)
           .normalize();
         const v = new THREE.Vector3().crossVectors(spot.normal, u);
         const spin = rand() * Math.PI;
-        const size = 0.009 + rand() * 0.004;
-        for (let k = 0; k < 5; k++) {
-          const a = spin + (k / 5) * Math.PI * 2;
+        const size = blossomSize.min + rand() * blossomSize.jitter;
+        for (let k = 0; k < blossomPetalCount; k++) {
+          const a = spin + (k / blossomPetalCount) * Math.PI * 2;
           openPoses.push(
             petalPose(u, v, spot.normal, a, OPEN_SPLAY_WEIGHT, OPEN_AXIS_WEIGHT, size, spot.position),
           );
@@ -465,7 +673,7 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
           blossoms.setColorAt(instance, color);
           instance++;
         }
-        const cs = size * 0.22;
+        const cs = size * (blossomPetalCount === 5 ? 0.22 : 0.36);
         matrix.makeScale(cs, cs, cs);
         matrix.setPosition(
           spot.position.x + spot.normal.x * 0.001,
@@ -478,12 +686,16 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
       centers.instanceMatrix.needsUpdate = true;
       stemGroup.add(blossoms, centers);
       bloomElements.push(addAnimatedInstances(blossoms, openPoses, budPoses, shedAt));
-    } else if (camellia) {
-      const form = CAMELLIA_FORMS[camellia.form];
-      // Four blooms per branch (two on the main, one per shoot), leaves on
-      // most of the remaining spots.
-      const flowerSpots = spots.filter((_, i) => i % 6 === 3);
-      const leafSpots = spots.filter((_, i) => i % 6 !== 3 && i % 2 === 0);
+    } else if (camellia && camelliaForm) {
+      const form = camelliaForm;
+      // Four blooms per branch (two on the main, one per shoot; six for a
+      // magnolia), leaves on most of the remaining spots unless the branch
+      // flowers bare.
+      const mid = Math.floor(form.bloomEvery / 2);
+      const flowerSpots = spots.filter((_, i) => i % form.bloomEvery === mid);
+      const leafSpots = camellia.leafless
+        ? []
+        : spots.filter((_, i) => i % form.bloomEvery !== mid && i % 2 === 0);
 
       const petals = new THREE.InstancedMesh(
         camelliaPetalGeometry,
@@ -511,7 +723,7 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
           .normalize();
         const v = new THREE.Vector3().crossVectors(spot.normal, u);
         const spin = rand() * Math.PI;
-        const size = 0.026 + rand() * 0.006;
+        const size = form.size.min + rand() * form.size.jitter;
         const flowerShed = rand();
         for (let k = 0; k < form.petalCount; k++) {
           const a = spin + (k / form.petalCount) * Math.PI * 2;
@@ -677,16 +889,28 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
 
   const debrisCount = Math.min(MAX_DEBRIS_INSTANCES, Math.max(1, opts.branchCount) * 20);
   const debrisRadiusM = { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 };
-  if (opts.adorn.type === "blossom") {
+  if (blossom) {
     bloomElements.push(
       addFloorDebris(group, {
         geometry: petalGeometry,
         material: petalMaterial,
         count: debrisCount,
-        sizeM: 0.011,
+        sizeM: blossomSize.min + blossomSize.jitter / 2,
         radiusM: debrisRadiusM,
         rand,
-        tint: new THREE.Color(opts.adorn.petalHex),
+        tint: new THREE.Color(blossom.petalHex),
+      }),
+    );
+  } else if (raceme) {
+    bloomElements.push(
+      addFloorDebris(group, {
+        geometry: peaGeometry,
+        material: petalMaterial,
+        count: MAX_DEBRIS_INSTANCES,
+        sizeM: RACEME_FLOWER_M * 0.9,
+        radiusM: debrisRadiusM,
+        rand,
+        tint: new THREE.Color(raceme.flowerHex),
       }),
     );
   } else if (camellia) {

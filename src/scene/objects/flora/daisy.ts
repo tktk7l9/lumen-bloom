@@ -44,10 +44,15 @@ interface DaisyStyle {
   leafWidthM: number;
   /** Cut poppies come without leaves — the layout's stem leaves are skipped. */
   leafless?: boolean;
+  /** Extra downward tilt of the face from the layout's nod (hellebores hang their heads). */
+  nodDeg?: number;
+  /** How strongly the face is pulled upright (unset = the layout's own nod). */
+  upBias?: number;
 }
 
-// One machine, six flowers: cosmos, anemone, gerbera, margaret, poppy and
-// kikyou differ only in petal proportions, ring stacking, and the center disc.
+// One machine, eleven flowers: cosmos, anemone, gerbera, margaret, poppy,
+// kikyou, hellebore, clematis, shumeigiku, tsuwabuki and kogiku differ only
+// in petal proportions, ring stacking, the center disc and where the face points.
 const STYLES = {
   cosmos: {
     petal: { widthM: 0.52, cupM: 0.05, bendM: 0.04 },
@@ -120,7 +125,88 @@ const STYLES = {
     stemRadiusM: 0.0026,
     leafWidthM: 0.3,
   },
+  // Hellebore: five broad overlapping sepals in a shallow cup around a
+  // boss of pale stamens, the whole flower hanging its head.
+  hellebore: {
+    petal: { widthM: 0.8, cupM: 0.1, bendM: -0.04 },
+    rings: [{ count: 5, tiltDeg: 24, lenFrac: 1 }],
+    discFrac: 0.2,
+    discColorCenterHex: 0xa9c25a,
+    discColorRimHex: 0xf1e6a6,
+    petalLenFrac: 0.5,
+    stemRadiusM: 0.0028,
+    leafWidthM: 0.22,
+    nodDeg: 40,
+  },
+  // Clematis: six flat pointed sepals in a wide star around a pale tuft of
+  // stamens, tilted up toward the light.
+  clematis: {
+    petal: { widthM: 0.5, cupM: 0.03, bendM: 0.01 },
+    rings: [{ count: 6, tiltDeg: 8, lenFrac: 1 }],
+    discFrac: 0.16,
+    discColorCenterHex: 0xe9e2d2,
+    discColorRimHex: 0xcdbf9a,
+    petalLenFrac: 0.52,
+    stemRadiusM: 0.0024,
+    leafWidthM: 0.3,
+    upBias: 0.3,
+  },
+  // Japanese anemone (shumeigiku): rounded overlapping sepals around a
+  // green boss ringed with yellow stamens, held up on tall wiry stems.
+  shumeigiku: {
+    petal: { widthM: 0.72, cupM: 0.05, bendM: 0.02 },
+    rings: [{ count: 8, tiltDeg: 12, lenFrac: 1 }],
+    discFrac: 0.2,
+    discColorCenterHex: 0x8fb24a,
+    discColorRimHex: 0xe9c23a,
+    petalLenFrac: 0.42,
+    stemRadiusM: 0.0024,
+    leafWidthM: 0.32,
+    upBias: 0.5,
+  },
+  // Tsuwabuki: a loose yellow daisy on a stalk; the plant's glossy round
+  // leaves sit low, so the layout's leaves are drawn broad and rounded.
+  tsuwabuki: {
+    petal: { widthM: 0.34, cupM: 0.04, bendM: 0.05 },
+    rings: [{ count: 12, tiltDeg: 10, lenFrac: 1 }],
+    discFrac: 0.2,
+    discColorCenterHex: 0xd79a1e,
+    discColorRimHex: 0xf0c53a,
+    petalLenFrac: 0.4,
+    stemRadiusM: 0.003,
+    leafWidthM: 0.9,
+    upBias: 0.35,
+  },
+  // Spray mum (kogiku): small heads packed with narrow petals in two rows
+  // around a tight yellow disc.
+  kogiku: {
+    petal: { widthM: 0.3, cupM: 0.05, bendM: 0.02 },
+    rings: [
+      { count: 14, tiltDeg: 10, lenFrac: 1 },
+      { count: 12, tiltDeg: 26, lenFrac: 0.82 },
+    ],
+    discFrac: 0.16,
+    discColorCenterHex: 0xd9a52e,
+    discColorRimHex: 0xf2d24a,
+    petalLenFrac: 0.3,
+    stemRadiusM: 0.0026,
+    leafWidthM: 0.3,
+    upBias: 0.4,
+  },
 } satisfies Record<string, DaisyStyle>;
+
+/** Where a head faces: the layout's nod, tipped further down, or pulled up toward the light. */
+function faceDirection([dx, dy, dz]: readonly [number, number, number], style: DaisyStyle): THREE.Vector3 {
+  if (style.nodDeg !== undefined) {
+    const az = Math.atan2(dz, dx);
+    const el = Math.asin(THREE.MathUtils.clamp(dy, -1, 1)) - (style.nodDeg * Math.PI) / 180;
+    return new THREE.Vector3(Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az));
+  }
+  if (style.upBias !== undefined) {
+    return new THREE.Vector3(dx, Math.max(dy, 0) + style.upBias, dz).normalize();
+  }
+  return new THREE.Vector3(dx, dy, dz);
+}
 
 function createGroup(opts: DaisyOptions, style: DaisyStyle): THREE.Group {
   const stems = layoutBouquet(opts);
@@ -188,7 +274,7 @@ function createGroup(opts: DaisyOptions, style: DaisyStyle): THREE.Group {
 
     const head = new THREE.Group();
     head.position.set(...stem.headPosition);
-    head.quaternion.setFromUnitVectors(UP, new THREE.Vector3(...stem.headDirection));
+    head.quaternion.setFromUnitVectors(UP, faceDirection(stem.headDirection, style));
 
     const discR = stem.headRadiusM * style.discFrac;
     const petalLen = stem.headRadiusM * style.petalLenFrac;
@@ -265,3 +351,9 @@ export const createGerberaGroup = (o: DaisyOptions): THREE.Group => createGroup(
 export const createMargaretGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.margaret);
 export const createPoppyGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.poppy);
 export const createKikyouGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.kikyou);
+export const createHelleboreGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.hellebore);
+export const createClematisGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.clematis);
+export const createShumeigikuGroup = (o: DaisyOptions): THREE.Group =>
+  createGroup(o, STYLES.shumeigiku);
+export const createTsuwabukiGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.tsuwabuki);
+export const createKogikuGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.kogiku);

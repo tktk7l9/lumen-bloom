@@ -27,6 +27,8 @@ interface FunnelStyle {
   throatHex: number;
   /** Funnel height × the layout's head radius. */
   sizeScale: number;
+  /** Rim width relative to height (1 = the morning glory's wide saucer; less = a deeper cup). */
+  flare: number;
   /** Flowers per stem: one at the tip, or a one-sided spike along the upper stem. */
   spike: { count: number; fromT: number } | null;
   leaf: { widthM: number; cupM: number; bendM: number; scale: number } | null;
@@ -49,6 +51,7 @@ const STYLES = {
     rays: true,
     throatHex: 0xfbf8f2,
     sizeScale: 0.62,
+    flare: 1,
     spike: null,
     leaf: { widthM: 1.05, cupM: -0.05, bendM: 0.15, scale: 1.0 },
     blades: false,
@@ -62,8 +65,9 @@ const STYLES = {
     lobeDepth: 0.05,
     rays: false,
     throatHex: 0xf6ecd2,
-    sizeScale: 0.34,
-    spike: { count: 7, fromT: 0.14 },
+    sizeScale: 0.3,
+    flare: 0.7,
+    spike: { count: 8, fromT: 0.1 },
     leaf: null,
     blades: true,
     stemRadiusM: 0.0036,
@@ -117,7 +121,7 @@ function createFunnelGeometry(style: FunnelStyle, rimHex: number): THREE.BufferG
     for (let s = 0; s <= FUNNEL_SEGMENTS; s++) {
       const a = (s / FUNNEL_SEGMENTS) * Math.PI * 2;
       const lobe = Math.cos(a * style.lobes);
-      const r = baseR * (1 + style.lobeDepth * lobe * flare * flare);
+      const r = baseR * style.flare * (1 + style.lobeDepth * lobe * flare * flare);
       positions.push(Math.cos(a) * r, y, Math.sin(a) * r);
       const mix = THREE.MathUtils.smoothstep(t, 0.4, 0.8);
       scratch.copy(throat).lerp(rim, mix);
@@ -289,8 +293,8 @@ function createGroup(opts: FunnelOptions, style: FunnelStyle): THREE.Group {
         const sideSign = k % 2 === 0 ? 1 : -1;
         const facing = outward
           .clone()
-          .addScaledVector(lateral, sideSign * 0.45)
-          .addScaledVector(tangent, 0.35)
+          .addScaledVector(lateral, sideSign * 0.5)
+          .addScaledVector(tangent, 0.6)
           .normalize();
         const scale = size * (1 - 0.25 * frac);
         if (frac > 0.8) {
@@ -328,14 +332,14 @@ function createGroup(opts: FunnelOptions, style: FunnelStyle): THREE.Group {
   }
 
   const avgHeadRadiusM = stems.reduce((sum, s) => sum + s.headRadiusM, 0) / stems.length;
-  const firstHex = opts.paletteHex[0] ?? 0x4a5fc1;
-  // Spent funnels crumple to the floor in their own rim color.
+  // Spent flowers twist shut and drop as slim tubes in their rim color — the
+  // furled-bud cone is exactly that shape.
   bloomElements.push(
     addFloorDebris(group, {
-      geometry: funnelFor(firstHex),
-      material: funnelMaterial,
+      geometry: budGeometry,
+      material: new THREE.MeshStandardMaterial({ color: opts.paletteHex[0] ?? 0x4a5fc1, roughness: 0.6 }),
       count: Math.min(MAX_DEBRIS_INSTANCES, stems.length * (style.spike ? 4 : 2)),
-      sizeM: avgHeadRadiusM * style.sizeScale * 0.5,
+      sizeM: avgHeadRadiusM * style.sizeScale * 0.7,
       radiusM: { min: opts.vaseBaseRadiusM * 1.15, max: opts.vaseBaseRadiusM * 2.4 },
       rand,
     }),

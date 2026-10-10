@@ -6,18 +6,29 @@ import { createBranchesGroup } from "./flora/branches";
 import { createCallaGroup } from "./flora/calla";
 import {
   createAnemoneGroup,
+  createClematisGroup,
   createCosmosGroup,
   createGerberaGroup,
+  createHelleboreGroup,
   createKikyouGroup,
+  createKogikuGroup,
   createMargaretGroup,
   createPoppyGroup,
+  createShumeigikuGroup,
+  createTsuwabukiGroup,
 } from "./flora/daisy";
+import { createAsagaoGroup, createGladiolusGroup } from "./flora/funnel";
 import { createHiganbanaGroup } from "./flora/higanbana";
-import { createHydrangeaGroup } from "./flora/hydrangea";
+import { createAlliumGroup, createHydrangeaGroup, createNanohanaGroup } from "./flora/hydrangea";
 import { createIrisGroup } from "./flora/iris";
-import { createKasumisouGroup } from "./flora/kasumisou";
-import { createLavenderGroup, createMuscariGroup } from "./flora/lavender";
-import { createLilyGroup } from "./flora/lily";
+import { createKasumisouGroup, createOminaeshiGroup } from "./flora/kasumisou";
+import {
+  createHyacinthGroup,
+  createLavenderGroup,
+  createMuscariGroup,
+  createWaremokouGroup,
+} from "./flora/lavender";
+import { createAmaryllisGroup, createLilyGroup } from "./flora/lily";
 import {
   createCarnationGroup,
   createDahliaGroup,
@@ -27,7 +38,7 @@ import {
   createRoseGroup,
 } from "./flora/layeredBloom";
 import { createNarcissusGroup } from "./flora/narcissus";
-import { createRindouGroup } from "./flora/rindou";
+import { createHozukiGroup, createRindouGroup } from "./flora/rindou";
 import { createSusukiGroup } from "./flora/susuki";
 import { createTulipsGroup } from "./flora/tulips";
 import { createVaseGroup } from "./vase";
@@ -45,10 +56,120 @@ export function createArrangement(a: Arrangement): THREE.Group {
     vaseBaseRadiusM: profile.baseRadiusM,
   };
 
+  const branchCommon = {
+    branchCount: a.flora.stemCount,
+    seed: a.flora.seed,
+    vaseRimYM: profile.heightM,
+    vaseNeckRadiusM: profile.neckRadiusM,
+    vaseBaseRadiusM: profile.baseRadiusM,
+  };
+
   let flora: THREE.Group;
   switch (a.flora.kind) {
     case "sunflower":
       flora = createFlowersGroup(common);
+      break;
+    case "hellebore":
+      flora = createHelleboreGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "clematis":
+      flora = createClematisGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "shumeigiku":
+      flora = createShumeigikuGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "tsuwabuki":
+      flora = createTsuwabukiGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "kogiku":
+      flora = createKogikuGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "hyacinth":
+      flora = createHyacinthGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "waremokou":
+      flora = createWaremokouGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "hozuki":
+      flora = createHozukiGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "nanohana":
+      flora = createNanohanaGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "allium":
+      flora = createAlliumGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "ominaeshi":
+      flora = createOminaeshiGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "amaryllis":
+      flora = createAmaryllisGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "asagao":
+      flora = createAsagaoGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "gladiolus":
+      flora = createGladiolusGroup({ ...common, paletteHex: a.flora.paletteHex });
+      break;
+    case "wisteria":
+      flora = createBranchesGroup({
+        ...branchCommon,
+        branchHex: a.flora.branchHex ?? 0x5a4636,
+        adorn: {
+          type: "raceme",
+          flowerHex: a.flora.paletteHex[0] ?? 0xb59be0,
+          tipHex: a.flora.paletteHex[1] ?? 0x6e58b8,
+          leafHex: a.flora.paletteHex[2] ?? 0x7fa05a,
+        },
+      });
+      break;
+    case "pine":
+      flora = createBranchesGroup({
+        ...branchCommon,
+        branchHex: a.flora.branchHex ?? 0x4a3a2c,
+        adorn: { type: "needle", needleHex: a.flora.paletteHex[0] ?? 0x3f6b3a },
+      });
+      break;
+    case "magnolia":
+      flora = createBranchesGroup({
+        ...branchCommon,
+        branchHex: a.flora.branchHex ?? 0x5a4a40,
+        adorn: {
+          type: "camellia",
+          petalHex: a.flora.paletteHex[0] ?? 0xf5f0e8,
+          stamenHex: a.flora.paletteHex[1] ?? 0xd9c98a,
+          leafHex: a.flora.paletteHex[2] ?? 0x4a6a3a,
+          form: "magnolia",
+          leafless: true,
+        },
+      });
+      break;
+    case "gardenia":
+      flora = createBranchesGroup({
+        ...branchCommon,
+        branchHex: a.flora.branchHex ?? 0x4a3a30,
+        adorn: {
+          type: "camellia",
+          petalHex: a.flora.paletteHex[0] ?? 0xf7f5ee,
+          stamenHex: a.flora.paletteHex[1] ?? 0xe9d98a,
+          leafHex: a.flora.paletteHex[2] ?? 0x254a24,
+          form: "flat",
+        },
+      });
+      break;
+    case "dogwood":
+      flora = createBranchesGroup({
+        ...branchCommon,
+        branchHex: a.flora.branchHex ?? 0x4f3f33,
+        adorn: {
+          type: "blossom",
+          petalHex: a.flora.paletteHex[0] ?? 0xf2b8c6,
+          centerHex: a.flora.paletteHex[1] ?? 0x8fb04a,
+          petalCount: 4,
+          size: { min: 0.024, jitter: 0.006 },
+          density: 0.45,
+        },
+      });
       break;
     case "tulip":
       flora = createTulipsGroup({ ...common, paletteHex: a.flora.paletteHex });

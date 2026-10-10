@@ -31,13 +31,21 @@ interface SpikeStyle {
   stemRadiusM: number;
   stemHex: number;
   leafScale: number;
+  /** Leaf blade width as a fraction of its length (narrow needle vs strap leaf). */
+  leafWidthM: number;
   droopScale: number;
   freeLengthScale: number;
+  /** Sideways scatter of the buds around the spike axis, × bud radius (0 = centered on the stem). */
+  spread: number;
+  /** Elongate the buds along the stem's own tangent instead of straight up (heads on a leaning stem). */
+  alignToStem: boolean;
 }
 
-// One machine, two flowers: a lavender spike is long, loose and oblong;
+// One machine, four flowers: a lavender spike is long, loose and oblong;
 // a muscari raceme is a short, fat, tapering bunch of round bells on a
-// stem a third as tall.
+// stem a third as tall; a hyacinth is a stout, dense cylinder of bells
+// over strap leaves; a burnet (waremokou) is a single dark oval head on
+// each wiry stem.
 const STYLES = {
   lavender: {
     budsPerSpike: 22,
@@ -48,8 +56,11 @@ const STYLES = {
     stemRadiusM: 0.0016,
     stemHex: 0x5f7a52,
     leafScale: 0.55,
+    leafWidthM: 0.1,
     droopScale: 1,
     freeLengthScale: 1,
+    spread: 1,
+    alignToStem: false,
   },
   muscari: {
     budsPerSpike: 30,
@@ -60,8 +71,41 @@ const STYLES = {
     stemRadiusM: 0.002,
     stemHex: 0x6f8f5a,
     leafScale: 0.7,
+    leafWidthM: 0.1,
     droopScale: 0.3,
     freeLengthScale: 0.45,
+    spread: 1,
+    alignToStem: false,
+  },
+  hyacinth: {
+    budsPerSpike: 48,
+    spikeLengthM: 0.085,
+    budRadiusM: 0.0052,
+    budElongation: 0.8,
+    taper: 0.2,
+    stemRadiusM: 0.0042,
+    stemHex: 0x7a9a5a,
+    leafScale: 1.2,
+    leafWidthM: 0.26,
+    droopScale: 0.25,
+    freeLengthScale: 0.7,
+    spread: 1,
+    alignToStem: true,
+  },
+  waremokou: {
+    budsPerSpike: 1,
+    spikeLengthM: 0.012,
+    budRadiusM: 0.0045,
+    budElongation: 1.9,
+    taper: 0,
+    stemRadiusM: 0.0011,
+    stemHex: 0x6d8a4c,
+    leafScale: 0.5,
+    leafWidthM: 0.14,
+    droopScale: 0.55,
+    freeLengthScale: 1.35,
+    spread: 0,
+    alignToStem: true,
   },
 } satisfies Record<string, SpikeStyle>;
 
@@ -89,7 +133,7 @@ function createGroup(opts: LavenderOptions, style: SpikeStyle): THREE.Group {
   const budGeometry = new THREE.SphereGeometry(1, 6, 5);
   const budMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.65 });
   const leafGeometry = gridToGeometry(
-    petalGrid({ lengthM: 1, widthM: 0.1, segmentsU: 6, segmentsV: 3, cupM: 0, bendM: 0.15 }),
+    petalGrid({ lengthM: 1, widthM: style.leafWidthM, segmentsU: 6, segmentsV: 3, cupM: 0, bendM: 0.15 }),
     0x5b7355,
     0x779370,
   );
@@ -142,21 +186,23 @@ function createGroup(opts: LavenderOptions, style: SpikeStyle): THREE.Group {
     const openPoses: InstancePose[] = [];
     const budPoses: InstancePose[] = [];
     const shedAt = new Float32Array(style.budsPerSpike);
-    const identity = new THREE.Quaternion();
+    const quaternion = style.alignToStem
+      ? new THREE.Quaternion().setFromUnitVectors(UP, tangent)
+      : new THREE.Quaternion();
     for (let k = 0; k < style.budsPerSpike; k++) {
       const frac = k / style.budsPerSpike;
       const along = frac * style.spikeLengthM - style.spikeLengthM * 0.24;
-      const jitterR = style.budRadiusM * (1 + rand() * 0.55);
+      const jitterR = style.budRadiusM * (1 + rand() * 0.55) * style.spread;
       const a = rand() * Math.PI * 2;
       const s = style.budRadiusM * (1 + rand() * 0.36) * (1 - style.taper * frac);
       const position = new THREE.Vector3(
         tip.x + tangent.x * along + Math.cos(a) * jitterR,
-        tip.y + tangent.y * along + (rand() - 0.5) * 0.002,
+        tip.y + tangent.y * along + (rand() - 0.5) * 0.002 * style.spread,
         tip.z + tangent.z * along + Math.sin(a) * jitterR,
       );
       const scale = new THREE.Vector3(s, s * style.budElongation, s);
-      openPoses.push({ position, quaternion: identity, scale });
-      budPoses.push({ position, quaternion: identity, scale: scale.clone().multiplyScalar(BUD_SCALE_FRAC) });
+      openPoses.push({ position, quaternion, scale });
+      budPoses.push({ position, quaternion, scale: scale.clone().multiplyScalar(BUD_SCALE_FRAC) });
       shedAt[k] = rand();
       color.copy(tint).offsetHSL(0, 0, (rand() - 0.5) * 0.08);
       buds.setColorAt(k, color);
@@ -199,3 +245,6 @@ function createGroup(opts: LavenderOptions, style: SpikeStyle): THREE.Group {
 
 export const createLavenderGroup = (o: LavenderOptions): THREE.Group => createGroup(o, STYLES.lavender);
 export const createMuscariGroup = (o: LavenderOptions): THREE.Group => createGroup(o, STYLES.muscari);
+export const createHyacinthGroup = (o: LavenderOptions): THREE.Group => createGroup(o, STYLES.hyacinth);
+export const createWaremokouGroup = (o: LavenderOptions): THREE.Group =>
+  createGroup(o, STYLES.waremokou);

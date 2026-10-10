@@ -34,6 +34,25 @@ export type FloraKind =
   | "camellia"
   | "sazanka"
   | "osmanthus"
+  | "hellebore"
+  | "clematis"
+  | "shumeigiku"
+  | "tsuwabuki"
+  | "kogiku"
+  | "hyacinth"
+  | "waremokou"
+  | "hozuki"
+  | "nanohana"
+  | "allium"
+  | "ominaeshi"
+  | "amaryllis"
+  | "asagao"
+  | "gladiolus"
+  | "wisteria"
+  | "pine"
+  | "magnolia"
+  | "gardenia"
+  | "dogwood"
   | "blossomBranch"
   | "leafBranch"
   | "berryBranch";
@@ -46,6 +65,11 @@ export const BRANCH_KINDS: readonly FloraKind[] = [
   "camellia",
   "sazanka",
   "osmanthus",
+  "wisteria",
+  "pine",
+  "magnolia",
+  "gardenia",
+  "dogwood",
 ];
 
 export interface VaseStyle {
@@ -812,6 +836,348 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
       style: { kind: "ceramic", colorHex: 0xb0603f },
     },
   },
+  {
+    id: "hakubai",
+    name: "白梅",
+    description:
+      "「梅は百花の魁」と呼ばれ、寒さの底の一月から他の花に先駆けて開き、春を告げる。菅原道真が「東風吹かば」と詠んで別れを惜しんだのも、庭の梅と伝わる。花言葉は白梅が「気品」、紅梅が「優美」。",
+    flora: {
+      kind: "blossomBranch",
+      paletteHex: [0xf8f5ee, 0xe9c84a],
+      branchHex: 0x3a2d26,
+      stemCount: 3,
+      seed: 52,
+    },
+    vase: {
+      profile: { heightM: 0.36, neckRadiusM: 0.042, bellyRadiusM: 0.052, baseRadiusM: 0.058 },
+      style: { kind: "ceramic", colorHex: 0x3b2f2a },
+    },
+  },
+  {
+    id: "matsu",
+    name: "松",
+    description:
+      "冬も緑を失わず長命なことから、古くから神の宿る木、長寿の象徴とされてきた。正月の門松は年神を家に迎えるための依り代で、飾っておく期間を「松の内」と呼ぶ。花言葉は「不老長寿」「永遠の若さ」。",
+    flora: {
+      kind: "pine",
+      paletteHex: [0x3f6b3a],
+      branchHex: 0x4a3a2c,
+      stemCount: 3,
+      seed: 53,
+    },
+    vase: {
+      profile: { heightM: 0.36, neckRadiusM: 0.044, bellyRadiusM: 0.054, baseRadiusM: 0.058 },
+      style: { kind: "ceramic", colorHex: 0x24262c },
+    },
+  },
+  {
+    id: "hyacinth",
+    name: "ヒヤシンス",
+    description:
+      "地中海東部生まれの球根花で、一本の茎に星形の小花を連ねて甘く香る。庭では三〜四月に咲くが、冬に水栽培すれば室内でひと足早く開く。ギリシャ神話では美少年ヒュアキントスの血から咲いたと伝わる。花言葉は「スポーツ」「悲しみを超えた愛」。",
+    flora: {
+      kind: "hyacinth",
+      paletteHex: [0xe88ab8, 0x6a6fd0, 0xf4f1ea],
+      stemCount: 5,
+      seed: 54,
+    },
+    vase: {
+      profile: { heightM: 0.22, neckRadiusM: 0.04, bellyRadiusM: 0.055, baseRadiusM: 0.05 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "hellebore",
+    name: "クリスマスローズ",
+    description:
+      "名にローズとつくがバラではなくキンポウゲ科。花びらに見える部分は萼で、花の少ない冬から早春にうつむいて咲く。名はクリスマスの頃に咲く白花の原種ニゲルに由来し、多くの品種は年明けから春に開く。花言葉は「慰め」「私の不安をやわらげて」。",
+    flora: {
+      kind: "hellebore",
+      paletteHex: [0xeef0e2, 0xd9a3b4, 0x6a3458],
+      stemCount: 6,
+      seed: 55,
+    },
+    vase: {
+      profile: { heightM: 0.24, neckRadiusM: 0.044, bellyRadiusM: 0.058, baseRadiusM: 0.052 },
+      style: { kind: "ceramic", colorHex: 0xdde6ec },
+    },
+  },
+  {
+    id: "nanohana",
+    name: "菜の花",
+    description:
+      "早春の野を黄色に染めるアブラナ科の花。四枚の花びらが十字に開くので、かつては十字花科とも呼ばれた。つぼみは菜花として食卓に上り、種からは菜種油が採れる。蕪村の「菜の花や月は東に日は西に」でも名高い。花言葉は「快活」「明るさ」。",
+    flora: {
+      kind: "nanohana",
+      paletteHex: [0xf2d430, 0xf5dd48],
+      stemCount: 6,
+      seed: 56,
+    },
+    vase: {
+      profile: { heightM: 0.26, neckRadiusM: 0.04, bellyRadiusM: 0.05, baseRadiusM: 0.05 },
+      style: { kind: "glass", colorHex: 0xd7dee6 },
+    },
+  },
+  {
+    id: "mokuren",
+    name: "白木蓮",
+    description:
+      "葉が出る前の裸の枝に、杯のような大ぶりの白い花を上向きに咲かせる。モクレン科は白亜紀の化石も残る原始的な花木で、つぼみの先はおおむね北を向くとされる。紫のモクレンはこれよりやや遅れて開く。花言葉は「自然への愛」「持続性」。",
+    flora: {
+      kind: "magnolia",
+      paletteHex: [0xf5f0e8, 0xd9c98a, 0x4a6a3a],
+      branchHex: 0x5a4a40,
+      stemCount: 3,
+      seed: 57,
+    },
+    vase: {
+      profile: { heightM: 0.36, neckRadiusM: 0.046, bellyRadiusM: 0.056, baseRadiusM: 0.06 },
+      style: { kind: "ceramic", colorHex: 0x2a2c33 },
+    },
+  },
+  {
+    id: "fuji",
+    name: "藤",
+    description:
+      "マメ科のつる性の花木で、藤棚から垂れる花房は長いものでは一メートルを超す。日本に自生するノダフジとヤマフジは、つるの巻く向きが互いに逆なのが見分けの決め手。万葉集にも多く詠まれた古くからの花。花言葉は「優しさ」「歓迎」。",
+    flora: {
+      kind: "wisteria",
+      paletteHex: [0xb59be0, 0x6e58b8, 0x7fa05a],
+      branchHex: 0x5a4636,
+      stemCount: 3,
+      seed: 58,
+    },
+    vase: {
+      profile: { heightM: 0.38, neckRadiusM: 0.046, bellyRadiusM: 0.056, baseRadiusM: 0.06 },
+      style: { kind: "ceramic", colorHex: 0xe9e4da },
+    },
+  },
+  {
+    id: "hanamizuki",
+    name: "ハナミズキ",
+    description:
+      "桜の後を継ぐように四月半ばから咲く。白や桃色の四枚の花びらに見えるのは苞で、本当の花は中央に集まる小さな粒。1912年に東京がワシントンへ桜を贈った返礼として、1915年にアメリカから届いた木でもある。花言葉は「返礼」「永続性」。",
+    flora: {
+      kind: "dogwood",
+      paletteHex: [0xefa9bd, 0x8fb04a],
+      branchHex: 0x4f3f33,
+      stemCount: 3,
+      seed: 59,
+    },
+    vase: {
+      profile: { heightM: 0.36, neckRadiusM: 0.046, bellyRadiusM: 0.056, baseRadiusM: 0.058 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "allium",
+    name: "アリウム",
+    description:
+      "ネギやニンニクと同じネギ属の球根花で、属名はラテン語でニンニクを指す。代表種のギガンチウムは初夏、葉のない一メートル余りの茎の先に無数の小花を集め、直径十数センチの紫の球をつくる。花言葉は「深い悲しみ」「正しい主張」。",
+    flora: {
+      kind: "allium",
+      paletteHex: [0x8a4fc0, 0x9a5fd0],
+      stemCount: 3,
+      seed: 60,
+    },
+    vase: {
+      profile: { heightM: 0.36, neckRadiusM: 0.034, bellyRadiusM: 0.044, baseRadiusM: 0.05 },
+      style: { kind: "glass", colorHex: 0xd7dee6 },
+    },
+  },
+  {
+    id: "kuchinashi",
+    name: "クチナシ",
+    description:
+      "梅雨どきに純白の花を開き、沈丁花・金木犀と並ぶ三大香木に数えられるアカネ科の花木。実が熟しても割れないことから「口無し」と名がついたとされ、その実は栗きんとんやたくあんを黄色く染める。花言葉は「とても幸せです」「喜びを運ぶ」。",
+    flora: {
+      kind: "gardenia",
+      paletteHex: [0xf7f5ee, 0xe9d98a, 0x254a24],
+      branchHex: 0x4a3a30,
+      stemCount: 3,
+      seed: 61,
+    },
+    vase: {
+      profile: { heightM: 0.3, neckRadiusM: 0.044, bellyRadiusM: 0.056, baseRadiusM: 0.058 },
+      style: { kind: "ceramic", colorHex: 0x3b4a4e },
+    },
+  },
+  {
+    id: "clematis",
+    name: "クレマチス",
+    description:
+      "「つる性植物の女王」と呼ばれるキンポウゲ科の花。花びらに見える部分は萼で、本当の花びらは持たない。日本に自生するカザグルマや中国原産のテッセンも仲間で、園芸品種を総称してテッセンと呼ぶこともある。花言葉は「精神の美」「旅人の喜び」。",
+    flora: {
+      kind: "clematis",
+      paletteHex: [0x6f4fa8, 0xf2eef6, 0xc25a8a],
+      stemCount: 5,
+      seed: 62,
+    },
+    vase: {
+      profile: { heightM: 0.28, neckRadiusM: 0.046, bellyRadiusM: 0.06, baseRadiusM: 0.052 },
+      style: { kind: "glass", colorHex: 0xaab3bf },
+    },
+  },
+  {
+    id: "asagao",
+    name: "朝顔",
+    description:
+      "奈良時代に薬草として中国から渡来し、種は牽牛子という下剤に使われた。花は日の出ではなく、日が沈んでからおよそ十時間たつと開く。江戸の二度の大流行が品種を広げ、七月初めの入谷朝顔市は今も夏の風物詩だ。花言葉は「愛情」「はかない恋」。",
+    flora: {
+      kind: "asagao",
+      paletteHex: [0x3f55b8, 0x8a4fb0, 0xd94a8a],
+      stemCount: 5,
+      seed: 63,
+    },
+    vase: {
+      profile: { heightM: 0.28, neckRadiusM: 0.044, bellyRadiusM: 0.058, baseRadiusM: 0.054 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "gladiolus",
+    name: "グラジオラス",
+    description:
+      "剣のような葉から、ラテン語で剣を意味するグラディウスにちなんで名づけられたアヤメ科の球根花。穂状に並ぶ花は下から上へ順に開き、夏の切り花として七月に出回りの盛りを迎える。和名は唐菖蒲、オランダアヤメ。花言葉は「勝利」「密会」。",
+    flora: {
+      kind: "gladiolus",
+      paletteHex: [0xd8303a, 0xf08aa8, 0xf2d040, 0xf6f1ea],
+      stemCount: 4,
+      seed: 64,
+    },
+    vase: {
+      profile: { heightM: 0.34, neckRadiusM: 0.046, bellyRadiusM: 0.056, baseRadiusM: 0.06 },
+      style: { kind: "ceramic", colorHex: 0x24262c },
+    },
+  },
+  {
+    id: "hozuki",
+    name: "ホオズキ",
+    description:
+      "提灯のような橙色の袋は、実を包んで大きく育った萼だ。お盆には先祖の霊を導く灯りに見立てて精霊棚に飾られ、浅草寺の七月九・十日のほおずき市は夏の風物詩。漢字では鬼灯、酸漿と書くナス科の草。花言葉は「偽り」「ごまかし」。",
+    flora: {
+      kind: "hozuki",
+      paletteHex: [0xe8651c],
+      stemCount: 5,
+      seed: 65,
+    },
+    vase: {
+      profile: { heightM: 0.3, neckRadiusM: 0.04, bellyRadiusM: 0.052, baseRadiusM: 0.054 },
+      style: { kind: "ceramic", colorHex: 0x2a2c33 },
+    },
+  },
+  {
+    id: "shumeigiku",
+    name: "秋明菊",
+    description:
+      "名に菊とつくがキク科ではなく、キンポウゲ科アネモネの仲間で、花びらに見えるのは萼だ。中国から古くに渡来して野生化し、京都・貴船にちなむ貴船菊の別名を持つ。英名はジャパニーズ・アネモネ。花言葉は「薄れゆく愛」「忍耐」。",
+    flora: {
+      kind: "shumeigiku",
+      paletteHex: [0xf5eef1, 0xe9a0bd],
+      stemCount: 5,
+      seed: 66,
+    },
+    vase: {
+      profile: { heightM: 0.3, neckRadiusM: 0.044, bellyRadiusM: 0.058, baseRadiusM: 0.054 },
+      style: { kind: "ceramic", colorHex: 0xafc9ba },
+    },
+  },
+  {
+    id: "ominaeshi",
+    name: "オミナエシ",
+    description:
+      "山上憶良が万葉集で数え上げた秋の七草のひとつ。細い茎の先に粟粒のような黄色い小花を群れ咲かせ、名は粟飯の別名「女飯」が転じたとする説がある。白い花を咲かせる近縁のオトコエシもある。花言葉は「美人」「はかない恋」。",
+    flora: {
+      kind: "ominaeshi",
+      paletteHex: [0xe9c53a],
+      stemCount: 7,
+      seed: 67,
+    },
+    vase: {
+      profile: { heightM: 0.32, neckRadiusM: 0.036, bellyRadiusM: 0.046, baseRadiusM: 0.05 },
+      style: { kind: "ceramic", colorHex: 0x5b6b7e },
+    },
+  },
+  {
+    id: "nerine",
+    name: "ネリネ",
+    description:
+      "南アフリカ原産のヒガンバナ科の球根花で、彼岸花によく似た花を秋に咲かせる。光が当たると花びらが宝石のようにきらめくことから、ダイヤモンドリリーの別名を持つ。切り花としての花もちもよい。花言葉は「また会う日を楽しみに」「華やか」。",
+    flora: {
+      kind: "higanbana",
+      paletteHex: [0xf07aa6, 0xf5a0c0],
+      stemCount: 5,
+      seed: 68,
+    },
+    vase: {
+      profile: { heightM: 0.3, neckRadiusM: 0.04, bellyRadiusM: 0.05, baseRadiusM: 0.054 },
+      style: { kind: "glass", colorHex: 0xf4fbf9 },
+    },
+  },
+  {
+    id: "waremokou",
+    name: "吾亦紅",
+    description:
+      "秋の野に暗紅色の小さな穂を立てるバラ科の多年草。穂は花びらのない小花の集まりで、赤く見えるのは萼だ。上から下へ咲き進むこの花は、みずから「我もまた紅なり」と唱えたのが名の由来と伝わる。花言葉は「変化」「もの思い」。",
+    flora: {
+      kind: "waremokou",
+      paletteHex: [0x7a2535, 0x8a3040],
+      stemCount: 9,
+      seed: 69,
+    },
+    vase: {
+      profile: { heightM: 0.3, neckRadiusM: 0.036, bellyRadiusM: 0.046, baseRadiusM: 0.05 },
+      style: { kind: "ceramic", colorHex: 0xe8e2d6 },
+    },
+  },
+  {
+    id: "tsuwabuki",
+    name: "ツワブキ",
+    description:
+      "花の乏しい晩秋から初冬に、つやのある厚い葉の上へ黄色い花を掲げるキク科の常緑草。名は「艶葉蕗」の転じたものとされ、鹿児島や沖縄では葉柄をフキ同様に食べ、佃煮のキャラブキにもする。花言葉は「謙譲」「困難に負けない」。",
+    flora: {
+      kind: "tsuwabuki",
+      paletteHex: [0xf2c330, 0xe9b520],
+      stemCount: 5,
+      seed: 70,
+    },
+    vase: {
+      profile: { heightM: 0.26, neckRadiusM: 0.044, bellyRadiusM: 0.056, baseRadiusM: 0.052 },
+      style: { kind: "ceramic", colorHex: 0x2f3b3a },
+    },
+  },
+  {
+    id: "kogiku",
+    name: "小菊",
+    description:
+      "菊は奈良時代の末から平安の初めに中国から渡ったとされ、古くから仏花や献花に用いられてきた。小菊は枝分かれして小ぶりの花を多数つける種類で、八戸特産の食用菊「阿房宮」のように食卓に上るものもある。花言葉は「高潔」「高尚」。",
+    flora: {
+      kind: "kogiku",
+      paletteHex: [0xf2d24a, 0xf6f1e8, 0xe9a0bd, 0xc97aa8],
+      stemCount: 7,
+      seed: 71,
+    },
+    vase: {
+      profile: { heightM: 0.26, neckRadiusM: 0.046, bellyRadiusM: 0.058, baseRadiusM: 0.052 },
+      style: { kind: "ceramic", colorHex: 0xb0603f },
+    },
+  },
+  {
+    id: "amaryllis",
+    name: "アマリリス",
+    description:
+      "中南米生まれのヒガンバナ科の球根花で、園芸上のアマリリスはヒッペアストルム属。空洞の太い茎の先に大輪の花を横向きに二〜四輪開く。本来は五〜六月に咲くが、冷蔵処理した球根や切り花でクリスマスの頃にも楽しまれる。花言葉は「誇り」「おしゃべり」。",
+    flora: {
+      kind: "amaryllis",
+      paletteHex: [0xd42a2a, 0xe24a4a],
+      stemCount: 3,
+      seed: 72,
+    },
+    vase: {
+      profile: { heightM: 0.34, neckRadiusM: 0.05, bellyRadiusM: 0.06, baseRadiusM: 0.058 },
+      style: { kind: "glass", colorHex: 0xeef7f6 },
+    },
+  },
 ];
 
 // Seasonal candidates per month (0 = January); the pick cycles week by
@@ -822,18 +1188,18 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
 // shown two weeks in a row and a week straddling the boundary does not
 // swap its flowers mid-week. Tests enforce both.
 const MONTH_ROTATION: ReadonlyArray<readonly string[]> = [
-  ["ume", "suisen", "tsubaki", "roubai", "nanten", "eucalyptus"], // Jan
-  ["ume", "suisen", "tsubaki", "roubai", "ranunculus", "anemone"], // Feb
-  ["tulip", "sakura", "mimosa", "momo", "rappa-suisen", "muscari"], // Mar
-  ["tulip", "sakura", "gerbera", "botan", "margaret", "poppy"], // Apr
-  ["peony", "rose", "ayame", "carnation", "calla", "poppy"], // May
-  ["hydrangea", "rose", "hanashoubu", "kasumisou", "calla", "lavender"], // Jun
-  ["sunflower", "sukashiyuri", "kikyou", "annabelle", "doudan", "lavender"], // Jul
-  ["sunflower", "lily", "kikyou", "lisianthus", "doudan", "kibana-cosmos"], // Aug
-  ["cosmos", "rindou", "susuki", "higanbana", "mum", "kibana-cosmos"], // Sep
-  ["cosmos", "kinmokusei", "susuki", "dahlia", "rose", "murasakishikibu"], // Oct
-  ["sazanka", "mum", "momiji", "dahlia", "nokongiku", "gerbera"], // Nov
-  ["sazanka", "suisen", "momiji", "roubai", "nanten", "eucalyptus"], // Dec
+  ["ume", "suisen", "tsubaki", "roubai", "nanten", "eucalyptus", "hakubai", "matsu"], // Jan
+  ["ume", "suisen", "tsubaki", "roubai", "ranunculus", "anemone", "hyacinth", "hellebore"], // Feb
+  ["tulip", "sakura", "mimosa", "momo", "rappa-suisen", "muscari", "nanohana", "mokuren"], // Mar
+  ["tulip", "sakura", "gerbera", "botan", "margaret", "poppy", "fuji", "hanamizuki"], // Apr
+  ["peony", "rose", "ayame", "carnation", "calla", "poppy", "fuji", "allium"], // May
+  ["hydrangea", "rose", "hanashoubu", "kasumisou", "calla", "lavender", "kuchinashi", "clematis"], // Jun
+  ["sunflower", "sukashiyuri", "kikyou", "annabelle", "doudan", "lavender", "asagao", "gladiolus"], // Jul
+  ["sunflower", "lily", "kikyou", "lisianthus", "doudan", "kibana-cosmos", "asagao", "hozuki"], // Aug
+  ["cosmos", "rindou", "susuki", "higanbana", "mum", "kibana-cosmos", "shumeigiku", "ominaeshi"], // Sep
+  ["cosmos", "kinmokusei", "susuki", "dahlia", "rose", "murasakishikibu", "nerine", "waremokou"], // Oct
+  ["sazanka", "mum", "momiji", "dahlia", "nokongiku", "gerbera", "tsuwabuki", "kogiku"], // Nov
+  ["sazanka", "suisen", "momiji", "roubai", "nanten", "eucalyptus", "amaryllis", "matsu"], // Dec
 ];
 
 /** Exposed for tests: which arrangement ids a month can show. */

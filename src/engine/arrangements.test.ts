@@ -63,9 +63,8 @@ describe("monthly rotation", () => {
     }
   });
 
-  it("gives every month the same number of candidates", () => {
-    const sizes = new Set(Array.from({ length: 12 }, (_, m) => monthCandidates(m).length));
-    expect(sizes.size).toBe(1);
+  it("gives every month the same eight candidates", () => {
+    for (let m = 0; m < 12; m++) expect(monthCandidates(m)).toHaveLength(8);
   });
 
   it("puts every catalog arrangement in season somewhere in the year", () => {
@@ -88,12 +87,36 @@ describe("monthly rotation", () => {
 describe("arrangementForDate", () => {
   it("never shows the same arrangement two weeks in a row, in either hemisphere", () => {
     const start = Date.UTC(2026, 0, 1);
-    const weeks = 52 * 6;
+    const weeks = 52 * 8;
     for (const latitude of [35, -33.9]) {
       for (let w = 0; w < weeks; w++) {
         const d = new Date(start + w * WEEK_MS);
         const next = new Date(start + (w + 1) * WEEK_MS);
         expect(arrangementForDate(d, latitude).id).not.toBe(arrangementForDate(next, latitude).id);
+      }
+    }
+  });
+
+  it("never swaps an in-season arrangement mid-week at a month boundary", () => {
+    // Walk every day of eight years: within one week (the selection grid),
+    // the arrangement may change only when the month changes AND the flower
+    // is not shared by both months — a shared flower keeps its slot, so the
+    // week shows it from start to end.
+    const start = Date.UTC(2026, 0, 1);
+    const DAY_MS = 86_400_000;
+    for (const latitude of [35, -33.9]) {
+      for (let day = 1; day < 365 * 8; day++) {
+        const prev = new Date(start + (day - 1) * DAY_MS);
+        const now = new Date(start + day * DAY_MS);
+        if (Math.floor(prev.getTime() / WEEK_MS) !== Math.floor(now.getTime() / WEEK_MS)) continue;
+        const a = arrangementForDate(prev, latitude);
+        const b = arrangementForDate(now, latitude);
+        if (a.id === b.id) continue;
+        const shift = latitude < 0 ? 6 : 0;
+        const mPrev = (prev.getMonth() + shift) % 12;
+        const mNow = (now.getMonth() + shift) % 12;
+        expect(mPrev).not.toBe(mNow);
+        expect(monthCandidates(mNow)).not.toContain(a.id);
       }
     }
   });

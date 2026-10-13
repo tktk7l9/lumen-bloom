@@ -1155,7 +1155,7 @@ export const ARRANGEMENTS: readonly Arrangement[] = [
       kind: "kogiku",
       paletteHex: [0xf2d24a, 0xf6f1e8, 0xe9a0bd, 0xc97aa8],
       stemCount: 7,
-      seed: 71,
+      seed: 83,
     },
     vase: {
       profile: { heightM: 0.26, neckRadiusM: 0.046, bellyRadiusM: 0.058, baseRadiusM: 0.052 },

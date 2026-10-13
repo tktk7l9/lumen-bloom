@@ -94,6 +94,23 @@ export function orientedPose(
   };
 }
 
+/**
+ * A pose built in a flower head's own frame (petal rings, discs), carried
+ * into the space of the group the head sits in — so several heads can share
+ * one InstancedMesh instead of one mesh per head.
+ */
+export function composePose(
+  headPosition: THREE.Vector3,
+  headQuaternion: THREE.Quaternion,
+  local: InstancePose,
+): InstancePose {
+  return {
+    position: local.position.clone().applyQuaternion(headQuaternion).add(headPosition),
+    quaternion: headQuaternion.clone().multiply(local.quaternion),
+    scale: local.scale.clone(),
+  };
+}
+
 const DEFAULT_BUD_RADIUS_FRAC = 0.22;
 const DEFAULT_BUD_LENGTH_FRAC = 0.4;
 const DEFAULT_BUD_TILT_DEG = 86;
@@ -234,6 +251,11 @@ export interface FloorDebrisOptions {
    * gray/white instead of the flower's actual color.
    */
   tint?: THREE.Color;
+  /**
+   * Several colors to pick from per fallen piece (a bunch mixing colors
+   * sheds all of them). Takes precedence over `tint`.
+   */
+  tints?: readonly THREE.Color[];
 }
 
 const DEFAULT_DEBRIS_Y = 0.0008;
@@ -273,8 +295,9 @@ export function addFloorDebris(parent: THREE.Group, opts: FloorDebrisOptions): B
     const radius = opts.radiusM.min + opts.rand() * (opts.radiusM.max - opts.radiusM.min);
     matrix.setPosition(Math.cos(placeAngle) * radius, centerY, Math.sin(placeAngle) * radius);
     mesh.setMatrixAt(i, matrix);
-    if (opts.tint) {
-      color.copy(opts.tint).offsetHSL(0, 0, (opts.rand() - 0.5) * 0.08);
+    const tint = opts.tints?.length ? opts.tints[Math.floor(opts.rand() * opts.tints.length)] : opts.tint;
+    if (tint) {
+      color.copy(tint).offsetHSL(0, 0, (opts.rand() - 0.5) * 0.08);
       mesh.setColorAt(i, color);
     }
   }

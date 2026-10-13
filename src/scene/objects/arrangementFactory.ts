@@ -11,7 +11,6 @@ import {
   createGerberaGroup,
   createHelleboreGroup,
   createKikyouGroup,
-  createKogikuGroup,
   createMargaretGroup,
   createPoppyGroup,
   createShumeigikuGroup,
@@ -19,15 +18,12 @@ import {
 } from "./flora/daisy";
 import { createAsagaoGroup, createGladiolusGroup } from "./flora/funnel";
 import { createHiganbanaGroup } from "./flora/higanbana";
+import { createHyacinthGroup } from "./flora/hyacinth";
 import { createAlliumGroup, createHydrangeaGroup, createNanohanaGroup } from "./flora/hydrangea";
 import { createIrisGroup } from "./flora/iris";
 import { createKasumisouGroup, createOminaeshiGroup } from "./flora/kasumisou";
-import {
-  createHyacinthGroup,
-  createLavenderGroup,
-  createMuscariGroup,
-  createWaremokouGroup,
-} from "./flora/lavender";
+import { createKogikuGroup } from "./flora/kogiku";
+import { createLavenderGroup, createMuscariGroup, createWaremokouGroup } from "./flora/lavender";
 import { createAmaryllisGroup, createLilyGroup } from "./flora/lily";
 import {
   createCarnationGroup,
@@ -149,11 +145,10 @@ export function createArrangement(a: Arrangement): THREE.Group {
         ...branchCommon,
         branchHex: a.flora.branchHex ?? 0x4a3a30,
         adorn: {
-          type: "camellia",
+          type: "gardenia",
           petalHex: a.flora.paletteHex[0] ?? 0xf7f5ee,
-          stamenHex: a.flora.paletteHex[1] ?? 0xe9d98a,
+          throatHex: a.flora.paletteHex[1] ?? 0xe9d98a,
           leafHex: a.flora.paletteHex[2] ?? 0x254a24,
-          form: "flat",
         },
       });
       break;

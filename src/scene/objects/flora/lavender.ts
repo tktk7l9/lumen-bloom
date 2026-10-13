@@ -41,11 +41,11 @@ interface SpikeStyle {
   alignToStem: boolean;
 }
 
-// One machine, four flowers: a lavender spike is long, loose and oblong;
+// One machine, three flowers: a lavender spike is long, loose and oblong;
 // a muscari raceme is a short, fat, tapering bunch of round bells on a
-// stem a third as tall; a hyacinth is a stout, dense cylinder of bells
-// over strap leaves; a burnet (waremokou) is a single dark oval head on
-// each wiry stem.
+// stem a third as tall; a burnet (waremokou) is a single dark oval head on
+// each wiry stem. (The hyacinth has its own builder: its florets are
+// stars, not beads.)
 const STYLES = {
   lavender: {
     budsPerSpike: 22,
@@ -76,21 +76,6 @@ const STYLES = {
     freeLengthScale: 0.45,
     spread: 1,
     alignToStem: false,
-  },
-  hyacinth: {
-    budsPerSpike: 48,
-    spikeLengthM: 0.085,
-    budRadiusM: 0.0052,
-    budElongation: 0.8,
-    taper: 0.2,
-    stemRadiusM: 0.0042,
-    stemHex: 0x7a9a5a,
-    leafScale: 1.2,
-    leafWidthM: 0.26,
-    droopScale: 0.25,
-    freeLengthScale: 0.7,
-    spread: 1,
-    alignToStem: true,
   },
   waremokou: {
     budsPerSpike: 1,
@@ -245,6 +230,5 @@ function createGroup(opts: LavenderOptions, style: SpikeStyle): THREE.Group {
 
 export const createLavenderGroup = (o: LavenderOptions): THREE.Group => createGroup(o, STYLES.lavender);
 export const createMuscariGroup = (o: LavenderOptions): THREE.Group => createGroup(o, STYLES.muscari);
-export const createHyacinthGroup = (o: LavenderOptions): THREE.Group => createGroup(o, STYLES.hyacinth);
 export const createWaremokouGroup = (o: LavenderOptions): THREE.Group =>
   createGroup(o, STYLES.waremokou);

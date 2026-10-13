@@ -18,6 +18,13 @@ export interface PetalGridOptions {
   cupM: number;
   /** How far the tip bends backward out of the petal plane. */
   bendM: number;
+  /**
+   * Exponent on the width profile. 1 (the default) is the pointed tip;
+   * smaller values fill the outline out into a blunt, rounded end — about
+   * 0.5 gives a gardenia petal or a chrysanthemum ray. The widest point
+   * stays at `widthM` either way.
+   */
+  widthExponent?: number;
 }
 
 export interface PetalGrid {
@@ -38,11 +45,14 @@ export function petalGrid(o: PetalGridOptions): PetalGrid {
   const cols = Math.max(2, Math.floor(o.segmentsV)) + 1;
   const positions: GridPoint[] = [];
   const rowT: number[] = [];
+  const exponent = o.widthExponent ?? 1;
 
   for (let iu = 0; iu < rows; iu++) {
     const t = iu / (rows - 1);
     rowT.push(t);
-    const halfWidth = (o.widthM * Math.sin(Math.PI * (BASE_PHASE + (1 - BASE_PHASE) * t))) / 2;
+    // sin(π) is a hair above zero in floating point, so the power stays real at the tip.
+    const profile = Math.sin(Math.PI * (BASE_PHASE + (1 - BASE_PHASE) * t));
+    const halfWidth = (o.widthM * (exponent === 1 ? profile : profile ** exponent)) / 2;
     for (let iv = 0; iv < cols; iv++) {
       const s = (iv / (cols - 1)) * 2 - 1; // -1..1 across
       const x = s * halfWidth;

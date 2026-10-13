@@ -1,6 +1,8 @@
 import * as THREE from "three";
+import { furledBud } from "../../../engine/geometry/floraMeshes";
 import { mulberry32 } from "../../../engine/geometry/prng";
-import { petalGrid } from "../../../engine/geometry/petalGrid";
+import { type PetalGrid, petalGrid } from "../../../engine/geometry/petalGrid";
+import { spiralBloom } from "../../../engine/geometry/spiralBloom";
 import {
   type BloomElement,
   type InstancePose,
@@ -8,9 +10,12 @@ import {
   addAnimatedInstances,
   addFloorDebris,
   attachBloomCycle,
+  composePose,
   orientedPose,
+  ringPose,
 } from "../bloomRig";
 import { attachBreeze, gridToGeometry } from "../flowers";
+import { meshDataToGeometry } from "./meshData";
 
 const UP = new THREE.Vector3(0, 1, 0);
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
@@ -72,7 +77,14 @@ export type BranchAdornment =
    */
   | { type: "raceme"; flowerHex: number; tipHex: number; leafHex: number }
   /** Pine: tufts of long needles along every twig — evergreen, nothing opens or falls. */
-  | { type: "needle"; needleHex: number };
+  | { type: "needle"; needleHex: number }
+  /**
+   * Gardenia (kuchinashi): big glossy leaves in opposite pairs crowding up
+   * to the shoot tips, a double bloom of thick, creamy petals spiralling in
+   * at the tip of most twigs and a long twisted bud on the rest. The petals
+   * yellow as the flower ages and drop one by one.
+   */
+  | { type: "gardenia"; petalHex: number; throatHex: number; leafHex: number };
 
 const CAMELLIA_FORMS = {
   cup: {
@@ -145,6 +157,38 @@ function peaFlowerGeometry(): THREE.BufferGeometry {
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
+  return geometry;
+}
+
+// Gardenia: shorter, leafier stems than the other cut branches, leaf pairs
+// only on the upper stretch, one double bloom per twig tip.
+const GARDENIA_RISE_SCALE = 0.86;
+const GARDENIA_NODE_SPACING_M = 0.034;
+const GARDENIA_PETALS = 22;
+const GARDENIA_PETAL_M = { min: 0.038, jitter: 0.008 };
+const GARDENIA_BUD_M = 0.032;
+const GARDENIA_CALYX_HEX = 0x6d8f45;
+/** Fresh white petals turn this ivory-yellow as the flower ages. */
+const GARDENIA_AGED_HEX = 0xe8cf86;
+const GARDENIA_AGE_WEIGHT = 0.75;
+
+/**
+ * Leaf blade with the base→tip gradient plus a pale midrib down the center
+ * column — on big glossy leaves (gardenia) the vein is what reads as "leaf"
+ * rather than "green paddle".
+ */
+function midribLeafGeometry(grid: PetalGrid, baseHex: number, tipHex: number, midribHex: number): THREE.BufferGeometry {
+  const geometry = gridToGeometry(grid, baseHex, tipHex);
+  const colors = geometry.getAttribute("color") as THREE.BufferAttribute;
+  const midrib = new THREE.Color(midribHex);
+  const scratch = new THREE.Color();
+  const center = Math.floor(grid.cols / 2);
+  for (let iu = 0; iu < grid.rows - 1; iu++) {
+    const i = iu * grid.cols + center;
+    scratch.setRGB(colors.getX(i), colors.getY(i), colors.getZ(i)).lerp(midrib, 0.6);
+    colors.setXYZ(i, scratch.r, scratch.g, scratch.b);
+  }
+  colors.needsUpdate = true;
   return geometry;
 }
 
@@ -270,7 +314,7 @@ const OSMANTHUS_FLOWER_M = 0.0047;
 const OSMANTHUS_BUD_FRAC = 0.4;
 
 /**
- * Cut branches (ume plum, sakura cherry, momiji maple, nanten, camellia, osmanthus): a leaning main branch with two side
+ * Cut branches (ume plum, sakura cherry, momiji maple, nanten, camellia, osmanthus, gardenia): a leaning main branch with two side
  * shoots per stem, adorned with instanced blossoms, leaves, or berry
  * clusters along the upper reaches.
  */
@@ -354,6 +398,38 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
     roughness: 0.3,
     side: THREE.DoubleSide,
   });
+  // Gardenia-only assets: rounded, cupped waxy petals (cream at the base),
+  // big glossy leaves with a pale midrib, and the twisted bud.
+  const gardenia = opts.adorn.type === "gardenia" ? opts.adorn : null;
+  const gardeniaPetalGeometry = gardenia
+    ? gridToGeometry(
+        petalGrid({ lengthM: 1, widthM: 0.7, segmentsU: 6, segmentsV: 4, cupM: 0.15, bendM: 0.05, widthExponent: 0.35 }),
+        new THREE.Color(0xffffff).lerp(new THREE.Color(gardenia.throatHex), 0.6).getHex(),
+        0xffffff,
+      )
+    : petalGeometry;
+  const gardeniaPetalMaterial = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.4,
+    side: THREE.DoubleSide,
+  });
+  const gardeniaLeafGeometry = gardenia
+    ? midribLeafGeometry(
+        petalGrid({ lengthM: 1, widthM: 0.5, segmentsU: 6, segmentsV: 4, cupM: -0.05, bendM: 0.06, widthExponent: 0.75 }),
+        new THREE.Color(gardenia.leafHex).multiplyScalar(0.55).getHex(),
+        gardenia.leafHex,
+        new THREE.Color(gardenia.leafHex).lerp(new THREE.Color(0xa9c784), 0.5).getHex(),
+      )
+    : leafGeometry;
+  const budGreen = new THREE.Color(0x7d9c55);
+  const budCream = new THREE.Color(0xf1ecd8);
+  const gardeniaBudGeometry = gardenia
+    ? meshDataToGeometry(furledBud(), (shade, [, y]) =>
+        budGreen.clone().lerp(budCream, THREE.MathUtils.smoothstep(y, 0.2, 0.75)).multiplyScalar(shade),
+      )
+    : sphereGeometry;
+  const gardeniaBudMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 });
+  const calyxMaterial = new THREE.MeshStandardMaterial({ color: GARDENIA_CALYX_HEX, roughness: 0.7 });
   const stamenGeometry = new THREE.CylinderGeometry(0.2, 0.26, 0.55, 8);
   stamenGeometry.translate(0, 0.275, 0);
   const stamenMaterial = camellia
@@ -418,7 +494,7 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
     const out = Math.sin(leanRad);
     const up = Math.cos(leanRad);
 
-    const riseM = 0.26 + rand() * 0.12;
+    const riseM = (0.26 + rand() * 0.12) * (gardenia ? GARDENIA_RISE_SCALE : 1);
     const wiggle = (rand() - 0.5) * 0.05;
 
     const along = (dist: number, w: number): THREE.Vector3 =>
@@ -686,6 +762,108 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
       centers.instanceMatrix.needsUpdate = true;
       stemGroup.add(blossoms, centers);
       bloomElements.push(addAnimatedInstances(blossoms, openPoses, budPoses, shedAt));
+    } else if (gardenia) {
+      // Opposite leaf pairs on the upper stretch of the main stem and along
+      // each shoot; the youngest pair makes a collar under the bloom.
+      const nodes = [
+        ...decussateNodes(main, 0.62, GARDENIA_NODE_SPACING_M, rand),
+        ...curves.slice(1).flatMap((c) => decussateNodes(c, 0.25, GARDENIA_NODE_SPACING_M, rand)),
+      ];
+      const leafPoses: InstancePose[] = [];
+      for (const node of nodes) {
+        for (const sign of [1, -1]) {
+          const out = node.out.clone().multiplyScalar(sign);
+          dir.copy(out).multiplyScalar(0.9).addScaledVector(node.tangent, 0.4).addScaledVector(UP, -0.04).normalize();
+          const size = (node.tip ? 0.048 : 0.056) + rand() * 0.014;
+          leafPoses.push(orientedPose(node.position.clone().addScaledVector(out, 0.002), dir, UP, size));
+        }
+      }
+      // Evergreen: the leaves neither unfurl nor fall within the week.
+      const leaves = new THREE.InstancedMesh(gardeniaLeafGeometry, camelliaLeafMaterial, leafPoses.length);
+      leaves.name = "gardenia-leaves";
+      leaves.castShadow = true;
+      stemGroup.add(leaves);
+      bloomElements.push(
+        addAnimatedInstances(leaves, leafPoses, leafPoses, new Float32Array(leafPoses.length).fill(2)),
+      );
+
+      // Every twig tip carries a double bloom except one, still a twisted bud.
+      const budTwig = Math.floor(rand() * curves.length);
+      const petalOpen: InstancePose[] = [];
+      const petalBud: InstancePose[] = [];
+      const petalShed: number[] = [];
+      const fresh: THREE.Color[] = [];
+      const calyxOpen: InstancePose[] = [];
+      const calyxBud: InstancePose[] = [];
+      const budOpen: InstancePose[] = [];
+      const budBud: InstancePose[] = [];
+      const petalColor = new THREE.Color(gardenia.petalHex);
+      curves.forEach((twig, ti) => {
+        const tip = twig.getPointAt(1);
+        const facing = twig.getTangentAt(1).addScaledVector(UP, 0.9).normalize();
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(UP, facing);
+        if (ti === budTwig) {
+          const s = GARDENIA_BUD_M * (0.9 + rand() * 0.2);
+          budOpen.push({ position: tip.clone(), quaternion, scale: new THREE.Vector3(s, s, s) });
+          budBud.push({ position: tip.clone(), quaternion, scale: new THREE.Vector3(s, s, s).multiplyScalar(0.6) });
+          return;
+        }
+        const L = GARDENIA_PETAL_M.min + rand() * GARDENIA_PETAL_M.jitter;
+        const center = tip.clone().addScaledVector(facing, L * 0.1);
+        const spiral = spiralBloom({
+          petals: GARDENIA_PETALS,
+          seed: opts.seed * 13 + b * 3 + ti,
+          tiltDeg: { outer: -8, inner: 76 },
+          innerLength: 0.48,
+          radius: { outer: 0.13, inner: 0.02 },
+          innerLift: 0.2,
+        });
+        for (const p of spiral) {
+          const open = ringPose(0, 1, p.radius * L, p.lift * L, p.tiltDeg, p.length * L, p.azimuthRad);
+          // Furled: every petal stands up around the axis, short, wrapped tight.
+          const furled = ringPose(0, 1, p.radius * L * 0.3, p.lift * L * 0.4, 84, p.length * L * 0.5, p.azimuthRad);
+          petalOpen.push(composePose(center, quaternion, open));
+          petalBud.push(composePose(center, quaternion, furled));
+          petalShed.push(0.05 + rand() * 0.9);
+          fresh.push(petalColor.clone().offsetHSL(0, 0, (rand() - 0.5) * 0.04));
+        }
+        // The stamen column's cylinder doubles as the green calyx cup under each bloom.
+        const calyx = { position: tip.clone(), quaternion, scale: new THREE.Vector3(L * 0.42, L * 0.5, L * 0.42) };
+        calyxOpen.push(calyx);
+        calyxBud.push({ ...calyx, scale: calyx.scale.clone().multiplyScalar(0.7) });
+      });
+
+      const petals = new THREE.InstancedMesh(gardeniaPetalGeometry, gardeniaPetalMaterial, petalOpen.length);
+      petals.name = "gardenia-petals";
+      petals.castShadow = true;
+      fresh.forEach((c, i) => petals.setColorAt(i, c));
+      if (petals.instanceColor) petals.instanceColor.needsUpdate = true;
+      stemGroup.add(petals);
+      bloomElements.push(addAnimatedInstances(petals, petalOpen, petalBud, petalShed));
+      // The petals yellow as the flower ages, toward the end of the week
+      // (re-uploaded only when the tone actually changes).
+      const aged = new THREE.Color(GARDENIA_AGED_HEX);
+      let agedBy = 0;
+      bloomElements.push({
+        applyStage(stage) {
+          const k = GARDENIA_AGE_WEIGHT * stage.shedProgress;
+          if (k === agedBy) return;
+          agedBy = k;
+          fresh.forEach((c, i) => petals.setColorAt(i, color.copy(c).lerp(aged, k)));
+          if (petals.instanceColor) petals.instanceColor.needsUpdate = true;
+        },
+      });
+
+      const calyxes = new THREE.InstancedMesh(stamenGeometry, calyxMaterial, calyxOpen.length);
+      calyxes.name = "gardenia-calyxes";
+      stemGroup.add(calyxes);
+      bloomElements.push(addAnimatedInstances(calyxes, calyxOpen, calyxBud, new Float32Array(calyxOpen.length).fill(2)));
+
+      const buds = new THREE.InstancedMesh(gardeniaBudGeometry, gardeniaBudMaterial, budOpen.length);
+      buds.name = "gardenia-buds";
+      buds.castShadow = true;
+      stemGroup.add(buds);
+      bloomElements.push(addAnimatedInstances(buds, budOpen, budBud, new Float32Array(budOpen.length).fill(2)));
     } else if (camellia && camelliaForm) {
       const form = camelliaForm;
       // Four blooms per branch (two on the main, one per shoot; six for a
@@ -911,6 +1089,19 @@ export function createBranchesGroup(opts: BranchOptions): THREE.Group {
         radiusM: debrisRadiusM,
         rand,
         tint: new THREE.Color(raceme.flowerHex),
+      }),
+    );
+  } else if (gardenia) {
+    // Spent petals drop already yellowed.
+    bloomElements.push(
+      addFloorDebris(group, {
+        geometry: gardeniaPetalGeometry,
+        material: gardeniaPetalMaterial,
+        count: debrisCount,
+        sizeM: GARDENIA_PETAL_M.min,
+        radiusM: debrisRadiusM,
+        rand,
+        tint: new THREE.Color(gardenia.petalHex).lerp(new THREE.Color(GARDENIA_AGED_HEX), GARDENIA_AGE_WEIGHT),
       }),
     );
   } else if (camellia) {

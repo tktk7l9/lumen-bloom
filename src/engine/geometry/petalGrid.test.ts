@@ -73,4 +73,25 @@ describe("petalGrid", () => {
   it("is deterministic", () => {
     expect(petalGrid(BASE)).toEqual(petalGrid(BASE));
   });
+
+  it("leaves the default outline untouched when widthExponent is 1", () => {
+    expect(petalGrid({ ...BASE, widthExponent: 1 })).toEqual(petalGrid(BASE));
+  });
+
+  it("rounds the tip off with a smaller widthExponent, keeping the widest point", () => {
+    const pointed = petalGrid(BASE);
+    const blunt = petalGrid({ ...BASE, widthExponent: 0.5 });
+    const halfWidth = (grid: typeof pointed, row: number): number => Math.abs(grid.positions[row * grid.cols][0]);
+    // Every row but the very tip is at least as wide, and the rows near the tip much wider…
+    for (let row = 0; row < blunt.rows - 1; row++) {
+      expect(halfWidth(blunt, row)).toBeGreaterThanOrEqual(halfWidth(pointed, row) - 1e-12);
+    }
+    const nearTip = blunt.rows - 2;
+    expect(halfWidth(blunt, nearTip)).toBeGreaterThan(1.5 * halfWidth(pointed, nearTip));
+    // …while the maximum width and the closed tip stay where they were.
+    const widest = Math.max(...blunt.rowT.map((_, row) => halfWidth(blunt, row))) * 2;
+    expect(widest).toBeCloseTo(BASE.widthM, 1);
+    expect(widest).toBeLessThanOrEqual(BASE.widthM + 1e-12);
+    expect(halfWidth(blunt, blunt.rows - 1)).toBeLessThan(1e-6);
+  });
 });

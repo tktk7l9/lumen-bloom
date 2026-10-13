@@ -50,9 +50,10 @@ interface DaisyStyle {
   upBias?: number;
 }
 
-// One machine, eleven flowers: cosmos, anemone, gerbera, margaret, poppy,
-// kikyou, hellebore, clematis, shumeigiku, tsuwabuki and kogiku differ only
-// in petal proportions, ring stacking, the center disc and where the face points.
+// One machine, ten flowers: cosmos, anemone, gerbera, margaret, poppy,
+// kikyou, hellebore, clematis, shumeigiku and tsuwabuki differ only in petal
+// proportions, ring stacking, the center disc and where the face points.
+// (Kogiku has its own builder: one stem carries a whole spray of heads.)
 const STYLES = {
   cosmos: {
     petal: { widthM: 0.52, cupM: 0.05, bendM: 0.04 },
@@ -176,22 +177,6 @@ const STYLES = {
     stemRadiusM: 0.003,
     leafWidthM: 0.9,
     upBias: 0.35,
-  },
-  // Spray mum (kogiku): small heads packed with narrow petals in two rows
-  // around a tight yellow disc.
-  kogiku: {
-    petal: { widthM: 0.3, cupM: 0.05, bendM: 0.02 },
-    rings: [
-      { count: 14, tiltDeg: 10, lenFrac: 1 },
-      { count: 12, tiltDeg: 26, lenFrac: 0.82 },
-    ],
-    discFrac: 0.16,
-    discColorCenterHex: 0xd9a52e,
-    discColorRimHex: 0xf2d24a,
-    petalLenFrac: 0.3,
-    stemRadiusM: 0.0026,
-    leafWidthM: 0.3,
-    upBias: 0.4,
   },
 } satisfies Record<string, DaisyStyle>;
 
@@ -356,4 +341,3 @@ export const createClematisGroup = (o: DaisyOptions): THREE.Group => createGroup
 export const createShumeigikuGroup = (o: DaisyOptions): THREE.Group =>
   createGroup(o, STYLES.shumeigiku);
 export const createTsuwabukiGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.tsuwabuki);
-export const createKogikuGroup = (o: DaisyOptions): THREE.Group => createGroup(o, STYLES.kogiku);

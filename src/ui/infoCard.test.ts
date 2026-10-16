@@ -104,8 +104,14 @@ describe("createInfoCard", () => {
     expect(document.activeElement).toBe(getByRole(mount, "button", { name: "花の説明を閉じる" }));
 
     (document.activeElement as HTMLElement).click();
-    (document.activeElement as HTMLElement | null)?.blur();
+    // A browser's focus fixup would move focus off the now-hidden card; jsdom
+    // has none, and since 30.1.2 blur() on an element inside a hidden subtree
+    // is a no-op too. Park focus on a visible control instead and check that
+    // focus() does not pull it back into the hidden card.
+    const elsewhere = document.createElement("button");
+    mount.append(elsewhere);
+    elsewhere.focus();
     card.focus();
-    expect(document.activeElement).toBe(document.body);
+    expect(document.activeElement).toBe(elsewhere);
   });
 });

@@ -55,10 +55,10 @@ npm run build       # 型チェック + 本番ビルド
 
 ## 品質指標
 
-Lighthouse と Observatory は 2026-07-14 に旧ホスティングの Vercel 上で計測した値（Cloudflare Workers の本番では未計測）。
+Lighthouse と Observatory は 2026-10-27 に Cloudflare Workers の本番 URL で計測した値（Lighthouse 13.5・mobile は 5 回、desktop は 3 回の中央値）。
 
-- Lighthouse: **desktop 99/100/100/100・mobile 92/100/100/100**（常時3D描画のTBTは適応フレームレートで6.3s→280msに削減）
-- Mozilla Observatory: **A+（score 120・tests 10/10）**
+- Lighthouse: **desktop 100/100/100/100・mobile 98/100/100/100**（常時3D描画のTBTは適応フレームレートで6.3s→280msに削減。2026-07-14 の旧ホスティング Vercel では desktop 99・mobile 92）
+- Mozilla Observatory: **A+（score 130・tests 12/12）**
 - テスト: **378**（2026-10-27 時点・`src/engine` 100%カバレッジゲート・CI強制）
 - npm audit: **0件** / gitleaks: **0件**
 

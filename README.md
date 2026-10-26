@@ -50,14 +50,16 @@ npm run build       # 型チェック + 本番ビルド
 - Three.js
 - Vite + TypeScript(Vanilla)
 - Vitest（`src/engine` 100%カバレッジ）
-- Vercel Analytics
+- Cloudflare Web Analytics（本番のみ）
 - Open-Meteo API（天気、APIキー不要）
 
-## 品質指標（2026-07-14 計測）
+## 品質指標
 
-- Lighthouse: **desktop 99/100/100/100・mobile 92/100/100/100**（常時3D描画のTBTは適応フレームレートで6.3s→280msに削減）
-- Mozilla Observatory: **A+（score 120・tests 10/10）**
-- テスト: **179**（`src/engine` 100%カバレッジゲート・CI強制）
+Lighthouse と Observatory は 2026-10-27 に Cloudflare Workers の本番 URL で計測した値（Lighthouse 13.5・mobile は 5 回、desktop は 3 回の中央値）。
+
+- Lighthouse: **desktop 100/100/100/100・mobile 98/100/100/100**（常時3D描画のTBTは適応フレームレートで6.3s→280msに削減。2026-07-14 の旧ホスティング Vercel では desktop 99・mobile 92）
+- Mozilla Observatory: **A+（score 130・tests 12/12）**
+- テスト: **378**（2026-10-27 時点・`src/engine` 100%カバレッジゲート・CI強制）
 - npm audit: **0件** / gitleaks: **0件**
 
 ## ホスティング
@@ -67,6 +69,6 @@ npm run build       # 型チェック + 本番ビルド
 2026-08-11、Vercel 無料枠の超過でアカウントが停止（全プロジェクトが
 `402 DEPLOYMENT_DISABLED`）したため移行した。ビルド成果物は純粋な静的
 ファイルなので Worker スクリプトは無く、`wrangler.jsonc` の `assets` だけで
-配信している。セキュリティヘッダーは `public/_headers`（`vercel.json` の
-`headers` を移植したもの）。`npm run deploy` で build + wrangler deploy。
-Vercel 側の設定も残置してあるので、復旧すれば両方に出せる。
+配信している。セキュリティヘッダーは `public/_headers`（Vercel 時代の `vercel.json` の
+`headers` を移植したもの。`vercel.json` は移行後に削除済み）。`npm run deploy` で
+build + wrangler deploy。

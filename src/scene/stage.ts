@@ -5,4 +5,5 @@
 
 export { applyProceduralEnvironment } from "./environment";
 export { createRenderContext } from "./renderer";
+export { generateRoomSurfaces } from "./objects/room";
 export { createSceneRig } from "./scene";

@@ -36,6 +36,11 @@ const stage = vi.hoisted(() => {
     applyProceduralEnvironment: vi.fn(),
     createRenderContext: vi.fn(() => ctx),
     createSceneRig: vi.fn(() => rig),
+    surfaces: { cedar: {}, plaster: {} },
+    generateRoomSurfaces: vi.fn(async (pause: () => Promise<void>) => {
+      await pause();
+      return stage.surfaces;
+    }),
   };
 });
 
@@ -43,6 +48,7 @@ vi.mock("./scene/stage", () => ({
   applyProceduralEnvironment: stage.applyProceduralEnvironment,
   createRenderContext: stage.createRenderContext,
   createSceneRig: stage.createSceneRig,
+  generateRoomSurfaces: stage.generateRoomSurfaces,
 }));
 
 import { startApp } from "./orchestrator";
@@ -206,7 +212,7 @@ describe("startApp", () => {
 
     expect(stage.createRenderContext).toHaveBeenCalledWith(document.getElementById("scene"));
     expect(stage.applyProceduralEnvironment).toHaveBeenCalledWith(stage.ctx.renderer, stage.ctx.scene);
-    expect(stage.createSceneRig).toHaveBeenCalledWith(stage.ctx, false);
+    expect(stage.createSceneRig).toHaveBeenCalledWith(stage.ctx, stage.surfaces, false);
     expect(stage.rig.setArrangement).toHaveBeenCalledWith(expected);
     expect(stage.rig.setBloomStage).toHaveBeenCalled();
     expect(stage.ctx.precompile).toHaveBeenCalled();
@@ -270,7 +276,7 @@ describe("startApp", () => {
     setReducedMotion(true);
     startApp();
     await boot();
-    expect(stage.createSceneRig).toHaveBeenCalledWith(stage.ctx, true);
+    expect(stage.createSceneRig).toHaveBeenCalledWith(stage.ctx, stage.surfaces, true);
 
     const renders = stage.ctx.render.mock.calls.length;
     await vi.advanceTimersByTimeAsync(5 * MIN);

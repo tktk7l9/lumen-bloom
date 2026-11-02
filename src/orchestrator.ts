@@ -216,15 +216,14 @@ export function startApp(): void {
   // up until the first full frame is on screen, so the finished look is
   // unchanged.
   async function bootScene(target: HTMLCanvasElement): Promise<void> {
-    const [{ applyProceduralEnvironment, createRenderContext, createSceneRig }] = await Promise.all([
-      stageModule,
-      afterNextPaint(window),
-    ]);
+    const [{ applyProceduralEnvironment, createRenderContext, createSceneRig, generateRoomSurfaces }] =
+      await Promise.all([stageModule, afterNextPaint(window)]);
     const context = createRenderContext(target);
     await yieldToMain(window);
     applyProceduralEnvironment(context.renderer, context.scene);
     await yieldToMain(window);
-    rig = createSceneRig(context, reducedMotion);
+    const surfaces = await generateRoomSurfaces(() => yieldToMain(window));
+    rig = createSceneRig(context, surfaces, reducedMotion);
     applyScene();
     await yieldToMain(window);
     // Link every shader the first frame needs up front, off the main thread

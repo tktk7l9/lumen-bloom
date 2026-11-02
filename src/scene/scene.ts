@@ -7,7 +7,7 @@ import type { SceneState } from "../engine/scene-state/sceneState";
 import { createMoonLightRig } from "./lighting/moonLight";
 import { createSunLightRig } from "./lighting/sunLight";
 import { createArrangement } from "./objects/arrangementFactory";
-import { BASE_FLOOR_COLOR, createRoom, SNOW_FLOOR_COLOR } from "./objects/room";
+import { createRoom, type RoomSurfaces, SNOW_COVER_OPACITY } from "./objects/room";
 import type { RenderContext } from "./renderer";
 import { createWeatherEffects } from "./weatherFx";
 
@@ -53,7 +53,7 @@ interface Lighting {
   glassRoughness: number;
   ambientTint: THREE.Color;
   backdrop: THREE.Color;
-  floorColor: THREE.Color;
+  snowCover: number;
 }
 
 function lightingFrom(state: SceneState): Lighting {
@@ -72,9 +72,7 @@ function lightingFrom(state: SceneState): Lighting {
         : GLASS_ROUGHNESS,
     ambientTint: new THREE.Color(state.mood.ambientTintHex),
     backdrop: new THREE.Color(state.backdropHex),
-    floorColor: new THREE.Color(
-      state.mood.particle === "snow" ? SNOW_FLOOR_COLOR : BASE_FLOOR_COLOR,
-    ),
+    snowCover: state.mood.particle === "snow" ? SNOW_COVER_OPACITY : 0,
   };
 }
 
@@ -83,7 +81,6 @@ function cloneLighting(l: Lighting): Lighting {
     ...l,
     ambientTint: l.ambientTint.clone(),
     backdrop: l.backdrop.clone(),
-    floorColor: l.floorColor.clone(),
   };
 }
 
@@ -103,7 +100,11 @@ function disposeDeep(root: THREE.Object3D): void {
  * The IBL environment (`applyProceduralEnvironment`) is applied separately by
  * the caller so the boot sequence can yield between the two heavy steps.
  */
-export function createSceneRig(ctx: RenderContext, reducedMotion = false): SceneRig {
+export function createSceneRig(
+  ctx: RenderContext,
+  surfaces: RoomSurfaces,
+  reducedMotion = false,
+): SceneRig {
   const ambient = new THREE.AmbientLight(0x445066, 0.5);
   ctx.scene.add(ambient);
 
@@ -118,7 +119,11 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
   const flashLight = new THREE.AmbientLight(0xd7e2ff, 0);
   ctx.scene.add(flashLight);
 
-  const room = createRoom();
+  const room = createRoom(
+    surfaces,
+    ctx.renderer.capabilities.getMaxAnisotropy(),
+    ctx.scene.environment,
+  );
   ctx.scene.add(room.group);
 
   // The centerpiece is installed via setArrangement() — initially by the
@@ -171,9 +176,10 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
     ambient.intensity = current.ambientLevel;
     ambient.color.copy(current.ambientTint);
     ctx.scene.environmentIntensity = current.environmentLevel;
+    room.setEnvironmentLevel(current.environmentLevel);
     ctx.fog.density = current.fogDensity;
     ctx.fog.color.copy(current.backdrop);
-    room.floorMaterial.color.copy(current.floorColor);
+    room.snowMaterial.opacity = current.snowCover;
     if (glassMaterial) glassMaterial.roughness = current.glassRoughness;
     // Backdrop + fog track the real-world brightness at the viewer's
     // location: the mood's daylight sky tint faded toward black at night.
@@ -225,7 +231,7 @@ export function createSceneRig(ctx: RenderContext, reducedMotion = false): Scene
         current.glassRoughness += (target.glassRoughness - current.glassRoughness) * k;
         current.ambientTint.lerp(target.ambientTint, k);
         current.backdrop.lerp(target.backdrop, k);
-        current.floorColor.lerp(target.floorColor, k);
+        current.snowCover += (target.snowCover - current.snowCover) * k;
         applyCurrent();
       }
       updateLightning(dtSec);

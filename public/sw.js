@@ -2,10 +2,14 @@
 // up online) with a cached shell fallback; other same-origin GETs are
 // cache-first with runtime caching (build assets are content-hashed).
 
-const CACHE = "lumen-bloom-v2";
+const CACHE = "lumen-bloom-v3";
+// The shell is keyed by "/" only. Workers static assets redirect
+// "/index.html" to "/" (307), and a redirected response stored by addAll
+// can't be served for a navigation (redirect mode "manual") — Chrome turns
+// it into a network error, so the offline fallback would fail.
+const SHELL_URL = "/";
 const SHELL = [
-  "/",
-  "/index.html",
+  SHELL_URL,
   "/favicon.svg",
   "/icon-192.png",
   "/icon-512.png",
@@ -44,11 +48,11 @@ self.addEventListener("fetch", (event) => {
           // or 5xx page must never become what every offline navigation shows.
           if (res.ok) {
             const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put("/index.html", copy));
+            caches.open(CACHE).then((c) => c.put(SHELL_URL, copy));
           }
           return res;
         })
-        .catch(() => caches.match("/index.html")),
+        .catch(() => caches.match(SHELL_URL)),
     );
     return;
   }

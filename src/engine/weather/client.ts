@@ -6,6 +6,13 @@ import { wmoToCondition } from "./mapping";
 import type { WeatherFetchResult, WeatherSnapshot } from "./types";
 
 const ENDPOINT = "https://api.open-meteo.com/v1/forecast";
+// A poll that never answers must not hang the weather loop until the next
+// interval fires on top of it; a stalled connection is treated like a
+// network failure (the last good snapshot is kept, see staleness.ts).
+export const WEATHER_TIMEOUT_MS = 10_000;
+// A current-weather reply is a few hundred bytes. Anything beyond this is
+// not the shape we asked for and is rejected before it reaches JSON.parse.
+export const WEATHER_MAX_BODY_BYTES = 64 * 1024;
 
 /** Pure URL builder — no network, so it's directly assertable in tests. */
 export function buildWeatherUrl(loc: GeoLocation): string {
@@ -54,6 +61,7 @@ export function parseWeatherResponse(json: unknown, fetchedAt: number = Date.now
 export interface WeatherFetchOptions {
   /** DI hook so this is testable without a real network call. */
   fetchImpl?: typeof fetch;
+  /** Caller-owned abort signal; without one the request times out on its own. */
   signal?: AbortSignal;
 }
 
@@ -63,9 +71,11 @@ export async function fetchCurrentWeather(
 ): Promise<WeatherFetchResult> {
   const doFetch = opts.fetchImpl ?? fetch;
 
+  const signal = opts.signal ?? AbortSignal.timeout(WEATHER_TIMEOUT_MS);
+
   let response: Response;
   try {
-    response = await doFetch(buildWeatherUrl(loc), { signal: opts.signal });
+    response = await doFetch(buildWeatherUrl(loc), { signal });
   } catch {
     return { ok: false, error: "network" };
   }
@@ -74,7 +84,9 @@ export async function fetchCurrentWeather(
 
   let json: unknown;
   try {
-    json = await response.json();
+    const text = await response.text();
+    if (text.length > WEATHER_MAX_BODY_BYTES) return { ok: false, error: "parse" };
+    json = JSON.parse(text);
   } catch {
     return { ok: false, error: "parse" };
   }

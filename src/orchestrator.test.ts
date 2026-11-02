@@ -66,7 +66,7 @@ function weatherBody(overrides: Record<string, number> = {}): unknown {
 }
 
 function okResponse(body: unknown): Response {
-  return { ok: true, json: async () => body } as unknown as Response;
+  return { ok: true, text: async () => JSON.stringify(body) } as unknown as Response;
 }
 
 // startApp() has no teardown (a wallpaper never unmounts), so the listeners

@@ -1,4 +1,9 @@
-import { buildWeatherUrl, fetchCurrentWeather, parseWeatherResponse } from "./client";
+import {
+  WEATHER_MAX_BODY_BYTES,
+  buildWeatherUrl,
+  fetchCurrentWeather,
+  parseWeatherResponse,
+} from "./client";
 
 const TOKYO = { lat: 35.6762, lng: 139.6503 };
 
@@ -72,15 +77,58 @@ describe("parseWeatherResponse", () => {
   });
 });
 
-function fakeFetch(impl: (url: string) => Promise<{ ok: boolean; json(): Promise<unknown> }>): typeof fetch {
+type FakeResponse = { ok: boolean; text(): Promise<string> };
+
+function fakeFetch(impl: (url: string, init?: RequestInit) => Promise<FakeResponse>): typeof fetch {
   return impl as unknown as typeof fetch;
+}
+
+function okBody(body: unknown): FakeResponse {
+  return { ok: true, text: async () => JSON.stringify(body) };
 }
 
 describe("fetchCurrentWeather", () => {
   it("resolves a snapshot on a successful, well-formed response", async () => {
-    const fetchImpl = fakeFetch(async () => ({ ok: true, json: async () => VALID_BODY }));
+    const fetchImpl = fakeFetch(async () => okBody(VALID_BODY));
     const result = await fetchCurrentWeather(TOKYO, { fetchImpl });
     expect(result.ok).toBe(true);
+  });
+
+  it("times out on its own when the caller passes no signal", async () => {
+    let seen: AbortSignal | null | undefined;
+    const fetchImpl = fakeFetch(async (_url, init) => {
+      seen = init?.signal;
+      return okBody(VALID_BODY);
+    });
+    await fetchCurrentWeather(TOKYO, { fetchImpl });
+    expect(seen).toBeInstanceOf(AbortSignal);
+    expect(seen?.aborted).toBe(false);
+  });
+
+  it("forwards a caller-owned signal instead of its own timeout", async () => {
+    const controller = new AbortController();
+    let seen: AbortSignal | null | undefined;
+    const fetchImpl = fakeFetch(async (_url, init) => {
+      seen = init?.signal;
+      return okBody(VALID_BODY);
+    });
+    await fetchCurrentWeather(TOKYO, { fetchImpl, signal: controller.signal });
+    expect(seen).toBe(controller.signal);
+  });
+
+  it("reports 'network' when the request is aborted (timeout)", async () => {
+    const fetchImpl = fakeFetch(async () => {
+      throw new DOMException("The operation was aborted.", "AbortError");
+    });
+    const result = await fetchCurrentWeather(TOKYO, { fetchImpl });
+    expect(result).toEqual({ ok: false, error: "network" });
+  });
+
+  it("rejects a body larger than the bound before parsing it", async () => {
+    const huge = JSON.stringify(VALID_BODY).padEnd(WEATHER_MAX_BODY_BYTES + 1, " ");
+    const fetchImpl = fakeFetch(async () => ({ ok: true, text: async () => huge }));
+    const result = await fetchCurrentWeather(TOKYO, { fetchImpl });
+    expect(result).toEqual({ ok: false, error: "parse" });
   });
 
   it("reports 'network' when the fetch call itself rejects", async () => {
@@ -92,25 +140,20 @@ describe("fetchCurrentWeather", () => {
   });
 
   it("reports 'http' on a non-ok response", async () => {
-    const fetchImpl = fakeFetch(async () => ({ ok: false, json: async () => ({}) }));
+    const fetchImpl = fakeFetch(async () => ({ ok: false, text: async () => "{}" }));
     const result = await fetchCurrentWeather(TOKYO, { fetchImpl });
     expect(result).toEqual({ ok: false, error: "http" });
   });
 
   it("reports 'parse' when the body isn't valid JSON", async () => {
-    const fetchImpl = fakeFetch(async () => ({
-      ok: true,
-      json: async () => {
-        throw new SyntaxError("bad json");
-      },
-    }));
+    const fetchImpl = fakeFetch(async () => ({ ok: true, text: async () => "{not json" }));
     const result = await fetchCurrentWeather(TOKYO, { fetchImpl });
     expect(result).toEqual({ ok: false, error: "parse" });
   });
 
   it("uses the global fetch when no fetchImpl is provided", async () => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = fakeFetch(async () => ({ ok: true, json: async () => VALID_BODY }));
+    globalThis.fetch = fakeFetch(async () => okBody(VALID_BODY));
     try {
       const result = await fetchCurrentWeather(TOKYO);
       expect(result.ok).toBe(true);

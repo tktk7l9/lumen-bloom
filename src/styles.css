@@ -261,6 +261,9 @@ body {
 
 .location-prompt button {
   flex: none;
+  /* 44px target, the height of the .close button in the same row, so the pill
+     does not grow (SHIG 78, 13). */
+  min-height: 2.75rem;
   padding: 0.35rem 0.8rem;
   border: 1px solid rgba(203, 211, 230, 0.35);
   border-radius: 999px;
